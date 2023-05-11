@@ -50,6 +50,14 @@ packages:
     url: https://github.com/vector-im/compound-ios
     revision: a6aec9a77bf008c86a296ba17d60005b5a8bfae4
     # path: ../compound-ios
+  ModuleSDK:
+    path: Modules/ModuleSDK
+  ModuleSDKConfig:
+    # Note: dependency substitution happens here, the external config should
+    # provide the same APIs as the default config does (APIs to define) and can install 
+    # dependencies into the ModuleSDK.
+    # path: ../External/ModuleSDKConfig
+    path: Modules/ModuleSDKConfig
   Algorithms:
     url: https://github.com/apple/swift-algorithms
     minorVersion: 1.0.0

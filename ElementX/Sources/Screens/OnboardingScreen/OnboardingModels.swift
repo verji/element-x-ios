@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+import ModuleSDK
 import SwiftUI
 
 // MARK: - Coordinator
@@ -39,8 +40,10 @@ struct OnboardingViewState: BindableState {
     var bindings: OnboardingBindings
     
     init() {
+        let onboardingTitleProvider: OnboardingTitleProviderProtocol? = ModuleSDKServiceLocator.shared.getService(.onboardingTitleProvider)
+        let title = onboardingTitleProvider?.onboardingTitle ?? L10n.screenOnboardingWelcomeTitle
         content = [
-            OnboardingPageContent(title: L10n.screenOnboardingWelcomeTitle.tinting(".", color: .element.accent),
+            OnboardingPageContent(title: title.tinting(".", color: .element.accent),
                                   message: L10n.screenOnboardingWelcomeSubtitle(InfoPlistReader.main.bundleDisplayName),
                                   image: Asset.Images.onboardingAppLogo)
         ]

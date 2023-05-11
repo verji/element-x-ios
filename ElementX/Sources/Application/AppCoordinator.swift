@@ -17,6 +17,7 @@
 import BackgroundTasks
 import Combine
 import MatrixRustSDK
+import ModuleSDKConfig
 import SwiftUI
 import Version
 
@@ -62,6 +63,8 @@ class AppCoordinator: AppCoordinatorProtocol, AuthenticationCoordinatorDelegate,
 
     init() {
         MXLog.configure()
+
+        ModuleSDKConfig.resolveDependencyGraph()
         
         navigationRootCoordinator = NavigationRootCoordinator()
         
