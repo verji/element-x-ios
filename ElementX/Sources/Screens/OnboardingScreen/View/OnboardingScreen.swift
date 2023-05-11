@@ -15,6 +15,7 @@
 //
 
 import DesignKit
+import ModuleSDK
 import SwiftUI
 
 /// The screen shown at the beginning of the onboarding flow.
@@ -62,7 +63,7 @@ struct OnboardingScreen: View {
             Spacer()
             
             VStack(spacing: 8) {
-                Text(L10n.screenOnboardingWelcomeTitle)
+                Text(title)
                     .font(.compound.headingLGBold)
                     .foregroundColor(.compound.textPrimary)
                     .multilineTextAlignment(.center)
@@ -92,6 +93,11 @@ struct OnboardingScreen: View {
         }
         .padding(.horizontal, verticalSizeClass == .compact ? 128 : 24)
         .readableFrame()
+    }
+
+    private var title: String {
+        let onboardingTitleProvider: OnboardingTitleProviderProtocol? = ModuleSDKServiceLocator.shared.getService(.onboardingTitleProvider)
+        return onboardingTitleProvider?.onboardingTitle ?? L10n.screenOnboardingWelcomeTitle
     }
 }
 
