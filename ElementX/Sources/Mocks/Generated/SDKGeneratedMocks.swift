@@ -774,4 +774,279 @@ class SDKClientMock: SDKClientProtocol {
         }
     }
 }
+class SDKEventTimelineItemMock: SDKEventTimelineItemProtocol {
+
+    //MARK: - canBeRepliedTo
+
+    public var canBeRepliedToCallsCount = 0
+    public var canBeRepliedToCalled: Bool {
+        return canBeRepliedToCallsCount > 0
+    }
+    public var canBeRepliedToReturnValue: Bool!
+    public var canBeRepliedToClosure: (() -> Bool)?
+
+    public func canBeRepliedTo() -> Bool {
+        canBeRepliedToCallsCount += 1
+        if let canBeRepliedToClosure = canBeRepliedToClosure {
+            return canBeRepliedToClosure()
+        } else {
+            return canBeRepliedToReturnValue
+        }
+    }
+    //MARK: - content
+
+    public var contentCallsCount = 0
+    public var contentCalled: Bool {
+        return contentCallsCount > 0
+    }
+    public var contentReturnValue: TimelineItemContent!
+    public var contentClosure: (() -> TimelineItemContent)?
+
+    public func content() -> TimelineItemContent {
+        contentCallsCount += 1
+        if let contentClosure = contentClosure {
+            return contentClosure()
+        } else {
+            return contentReturnValue
+        }
+    }
+    //MARK: - debugInfo
+
+    public var debugInfoCallsCount = 0
+    public var debugInfoCalled: Bool {
+        return debugInfoCallsCount > 0
+    }
+    public var debugInfoReturnValue: EventTimelineItemDebugInfo!
+    public var debugInfoClosure: (() -> EventTimelineItemDebugInfo)?
+
+    public func debugInfo() -> EventTimelineItemDebugInfo {
+        debugInfoCallsCount += 1
+        if let debugInfoClosure = debugInfoClosure {
+            return debugInfoClosure()
+        } else {
+            return debugInfoReturnValue
+        }
+    }
+    //MARK: - eventId
+
+    public var eventIdCallsCount = 0
+    public var eventIdCalled: Bool {
+        return eventIdCallsCount > 0
+    }
+    public var eventIdReturnValue: String?
+    public var eventIdClosure: (() -> String?)?
+
+    public func eventId() -> String? {
+        eventIdCallsCount += 1
+        if let eventIdClosure = eventIdClosure {
+            return eventIdClosure()
+        } else {
+            return eventIdReturnValue
+        }
+    }
+    //MARK: - isEditable
+
+    public var isEditableCallsCount = 0
+    public var isEditableCalled: Bool {
+        return isEditableCallsCount > 0
+    }
+    public var isEditableReturnValue: Bool!
+    public var isEditableClosure: (() -> Bool)?
+
+    public func isEditable() -> Bool {
+        isEditableCallsCount += 1
+        if let isEditableClosure = isEditableClosure {
+            return isEditableClosure()
+        } else {
+            return isEditableReturnValue
+        }
+    }
+    //MARK: - isLocal
+
+    public var isLocalCallsCount = 0
+    public var isLocalCalled: Bool {
+        return isLocalCallsCount > 0
+    }
+    public var isLocalReturnValue: Bool!
+    public var isLocalClosure: (() -> Bool)?
+
+    public func isLocal() -> Bool {
+        isLocalCallsCount += 1
+        if let isLocalClosure = isLocalClosure {
+            return isLocalClosure()
+        } else {
+            return isLocalReturnValue
+        }
+    }
+    //MARK: - isOwn
+
+    public var isOwnCallsCount = 0
+    public var isOwnCalled: Bool {
+        return isOwnCallsCount > 0
+    }
+    public var isOwnReturnValue: Bool!
+    public var isOwnClosure: (() -> Bool)?
+
+    public func isOwn() -> Bool {
+        isOwnCallsCount += 1
+        if let isOwnClosure = isOwnClosure {
+            return isOwnClosure()
+        } else {
+            return isOwnReturnValue
+        }
+    }
+    //MARK: - isRemote
+
+    public var isRemoteCallsCount = 0
+    public var isRemoteCalled: Bool {
+        return isRemoteCallsCount > 0
+    }
+    public var isRemoteReturnValue: Bool!
+    public var isRemoteClosure: (() -> Bool)?
+
+    public func isRemote() -> Bool {
+        isRemoteCallsCount += 1
+        if let isRemoteClosure = isRemoteClosure {
+            return isRemoteClosure()
+        } else {
+            return isRemoteReturnValue
+        }
+    }
+    //MARK: - localSendState
+
+    public var localSendStateCallsCount = 0
+    public var localSendStateCalled: Bool {
+        return localSendStateCallsCount > 0
+    }
+    public var localSendStateReturnValue: EventSendState?
+    public var localSendStateClosure: (() -> EventSendState?)?
+
+    public func localSendState() -> EventSendState? {
+        localSendStateCallsCount += 1
+        if let localSendStateClosure = localSendStateClosure {
+            return localSendStateClosure()
+        } else {
+            return localSendStateReturnValue
+        }
+    }
+    //MARK: - origin
+
+    public var originCallsCount = 0
+    public var originCalled: Bool {
+        return originCallsCount > 0
+    }
+    public var originReturnValue: EventItemOrigin?
+    public var originClosure: (() -> EventItemOrigin?)?
+
+    public func origin() -> EventItemOrigin? {
+        originCallsCount += 1
+        if let originClosure = originClosure {
+            return originClosure()
+        } else {
+            return originReturnValue
+        }
+    }
+    //MARK: - reactions
+
+    public var reactionsCallsCount = 0
+    public var reactionsCalled: Bool {
+        return reactionsCallsCount > 0
+    }
+    public var reactionsReturnValue: [Reaction]!
+    public var reactionsClosure: (() -> [Reaction])?
+
+    public func reactions() -> [Reaction] {
+        reactionsCallsCount += 1
+        if let reactionsClosure = reactionsClosure {
+            return reactionsClosure()
+        } else {
+            return reactionsReturnValue
+        }
+    }
+    //MARK: - readReceipts
+
+    public var readReceiptsCallsCount = 0
+    public var readReceiptsCalled: Bool {
+        return readReceiptsCallsCount > 0
+    }
+    public var readReceiptsReturnValue: [String: Receipt]!
+    public var readReceiptsClosure: (() -> [String: Receipt])?
+
+    public func readReceipts() -> [String: Receipt] {
+        readReceiptsCallsCount += 1
+        if let readReceiptsClosure = readReceiptsClosure {
+            return readReceiptsClosure()
+        } else {
+            return readReceiptsReturnValue
+        }
+    }
+    //MARK: - sender
+
+    public var senderCallsCount = 0
+    public var senderCalled: Bool {
+        return senderCallsCount > 0
+    }
+    public var senderReturnValue: String!
+    public var senderClosure: (() -> String)?
+
+    public func sender() -> String {
+        senderCallsCount += 1
+        if let senderClosure = senderClosure {
+            return senderClosure()
+        } else {
+            return senderReturnValue
+        }
+    }
+    //MARK: - senderProfile
+
+    public var senderProfileCallsCount = 0
+    public var senderProfileCalled: Bool {
+        return senderProfileCallsCount > 0
+    }
+    public var senderProfileReturnValue: ProfileDetails!
+    public var senderProfileClosure: (() -> ProfileDetails)?
+
+    public func senderProfile() -> ProfileDetails {
+        senderProfileCallsCount += 1
+        if let senderProfileClosure = senderProfileClosure {
+            return senderProfileClosure()
+        } else {
+            return senderProfileReturnValue
+        }
+    }
+    //MARK: - timestamp
+
+    public var timestampCallsCount = 0
+    public var timestampCalled: Bool {
+        return timestampCallsCount > 0
+    }
+    public var timestampReturnValue: UInt64!
+    public var timestampClosure: (() -> UInt64)?
+
+    public func timestamp() -> UInt64 {
+        timestampCallsCount += 1
+        if let timestampClosure = timestampClosure {
+            return timestampClosure()
+        } else {
+            return timestampReturnValue
+        }
+    }
+    //MARK: - transactionId
+
+    public var transactionIdCallsCount = 0
+    public var transactionIdCalled: Bool {
+        return transactionIdCallsCount > 0
+    }
+    public var transactionIdReturnValue: String?
+    public var transactionIdClosure: (() -> String?)?
+
+    public func transactionId() -> String? {
+        transactionIdCallsCount += 1
+        if let transactionIdClosure = transactionIdClosure {
+            return transactionIdClosure()
+        } else {
+            return transactionIdReturnValue
+        }
+    }
+}
 // swiftlint:enable all

@@ -64,10 +64,10 @@ enum TimelineItemDeliveryStatus: Hashable {
 
 /// A light wrapper around event timeline items returned from Rust.
 class EventTimelineItemProxy {
-    let item: MatrixRustSDK.EventTimelineItem
+    let item: MatrixRustSDK.EventTimelineItemProtocol
     let id: TimelineItemIdentifier
     
-    init(item: MatrixRustSDK.EventTimelineItem, id: UInt64) {
+    init(item: MatrixRustSDK.EventTimelineItemProtocol, id: UInt64) {
         self.item = item
         self.id = TimelineItemIdentifier(timelineID: String(id), eventID: item.eventId(), transactionID: item.transactionId())
     }
