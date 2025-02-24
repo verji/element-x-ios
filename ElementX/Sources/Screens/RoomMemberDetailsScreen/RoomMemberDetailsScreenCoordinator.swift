@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -21,6 +21,7 @@ enum RoomMemberDetailsScreenCoordinatorAction {
     case openUserProfile
     case openDirectChat(roomID: String)
     case startCall(roomID: String)
+    case verifyUser(userID: String)
 }
 
 final class RoomMemberDetailsScreenCoordinator: CoordinatorProtocol {
@@ -53,6 +54,8 @@ final class RoomMemberDetailsScreenCoordinator: CoordinatorProtocol {
                 actionsSubject.send(.openDirectChat(roomID: roomID))
             case .startCall(let roomID):
                 actionsSubject.send(.startCall(roomID: roomID))
+            case .verifyUser(let userID):
+                actionsSubject.send(.verifyUser(userID: userID))
             }
         }
         .store(in: &cancellables)

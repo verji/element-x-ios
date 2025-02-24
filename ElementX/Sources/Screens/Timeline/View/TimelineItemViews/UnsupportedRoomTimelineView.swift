@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -40,19 +40,19 @@ struct UnsupportedRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static var body: some View {
         VStack(alignment: .leading, spacing: 20.0) {
             UnsupportedRoomTimelineView(timelineItem: itemWith(text: "Text",
-                                                               timestamp: "Now",
+                                                               timestamp: .mock,
                                                                isOutgoing: false,
                                                                senderId: "Bob"))
             
             UnsupportedRoomTimelineView(timelineItem: itemWith(text: "Some other text",
-                                                               timestamp: "Later",
+                                                               timestamp: .mock,
                                                                isOutgoing: true,
                                                                senderId: "Anne"))
         }
     }
     
-    private static func itemWith(text: String, timestamp: String, isOutgoing: Bool, senderId: String) -> UnsupportedRoomTimelineItem {
-        UnsupportedRoomTimelineItem(id: .random,
+    private static func itemWith(text: String, timestamp: Date, isOutgoing: Bool, senderId: String) -> UnsupportedRoomTimelineItem {
+        UnsupportedRoomTimelineItem(id: .randomEvent,
                                     body: text,
                                     eventType: "Some Event Type",
                                     error: "Something went wrong",

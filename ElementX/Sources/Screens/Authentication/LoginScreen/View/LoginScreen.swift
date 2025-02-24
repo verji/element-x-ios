@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -29,6 +29,7 @@ struct LoginScreen: View {
                     // This should never be shown.
                     ProgressView()
                 default:
+                    // This should never be shown either.
                     loginUnavailableText
                 }
             }
@@ -37,13 +38,14 @@ struct LoginScreen: View {
             .padding(.bottom, 16)
         }
         .background(Color.compound.bgCanvasDefault.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
         .alert(item: $context.alertInfo)
     }
     
     /// The header containing the title and icon.
     var header: some View {
         VStack(spacing: 8) {
-            HeroImage(icon: \.lockSolid)
+            BigIcon(icon: \.lockSolid)
                 .padding(.bottom, 8)
             
             Text(L10n.screenLoginTitleWithHomeserver(context.viewState.homeserver.address))
@@ -64,7 +66,7 @@ struct LoginScreen: View {
                 .padding(.bottom, 8)
             
             TextField(text: $context.username) {
-                Text(L10n.commonUsername).foregroundColor(.compound.textPlaceholder)
+                Text(L10n.commonUsername).foregroundColor(.compound.textSecondary)
             }
             .focused($isUsernameFocused)
             .textFieldStyle(.authentication(accessibilityIdentifier: A11yIdentifiers.loginScreen.emailUsername))
@@ -72,12 +74,14 @@ struct LoginScreen: View {
             .textContentType(.username)
             .autocapitalization(.none)
             .submitLabel(.next)
-            .onChange(of: isUsernameFocused, perform: usernameFocusChanged)
+            .onChange(of: isUsernameFocused) { _, newValue in
+                usernameFocusChanged(isFocussed: newValue)
+            }
             .onSubmit { isPasswordFocused = true }
             .padding(.bottom, 20)
             
             SecureField(text: $context.password) {
-                Text(L10n.commonPassword).foregroundColor(.compound.textPlaceholder)
+                Text(L10n.commonPassword).foregroundColor(.compound.textSecondary)
             }
             .focused($isPasswordFocused)
             .textFieldStyle(.authentication(accessibilityIdentifier: A11yIdentifiers.loginScreen.password))
@@ -124,35 +128,48 @@ struct LoginScreen: View {
 // MARK: - Previews
 
 struct LoginScreen_Previews: PreviewProvider, TestablePreview {
-    static let credentialsViewModel: LoginScreenViewModel = {
-        let viewModel = LoginScreenViewModel(homeserver: .mockMatrixDotOrg, slidingSyncLearnMoreURL: ServiceLocator.shared.settings.slidingSyncLearnMoreURL)
-        viewModel.context.username = "alice"
-        viewModel.context.password = "password"
-        return viewModel
-    }()
+    static let viewModel = makeViewModel()
+    static let credentialsViewModel = makeViewModel(withCredentials: true)
+    static let unconfiguredViewModel = makeViewModel(homeserverAddress: "somethingtofailconfiguration")
     
     static var previews: some View {
-        screen(for: LoginScreenViewModel(homeserver: .mockMatrixDotOrg, slidingSyncLearnMoreURL: ServiceLocator.shared.settings.slidingSyncLearnMoreURL))
-            .previewDisplayName("matrix.org")
-        screen(for: credentialsViewModel)
-            .previewDisplayName("Credentials Entered")
-        screen(for: LoginScreenViewModel(homeserver: .mockMatrixDotOrg, slidingSyncLearnMoreURL: ServiceLocator.shared.settings.slidingSyncLearnMoreURL))
-            .previewDisplayName("Unsupported")
-        screen(for: LoginScreenViewModel(homeserver: .mockMatrixDotOrg, slidingSyncLearnMoreURL: ServiceLocator.shared.settings.slidingSyncLearnMoreURL))
-            .previewDisplayName("OIDC Fallback")
-    }
-    
-    static func screen(for viewModel: LoginScreenViewModel) -> some View {
         NavigationStack {
             LoginScreen(context: viewModel.context)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button { } label: {
-                            Text("\(Image(systemName: "chevron.backward")) Back")
-                        }
-                    }
-                }
         }
+        .snapshotPreferences(expect: viewModel.context.$viewState.map { state in
+            state.homeserver.loginMode == .password
+        })
+        .previewDisplayName("matrix.org")
+        
+        NavigationStack {
+            LoginScreen(context: credentialsViewModel.context)
+        }
+        .snapshotPreferences(expect: credentialsViewModel.context.$viewState.map { state in
+            state.homeserver.loginMode == .password
+        })
+        .previewDisplayName("Credentials Entered")
+        
+        NavigationStack {
+            LoginScreen(context: unconfiguredViewModel.context)
+        }
+        .previewDisplayName("Unsupported")
+    }
+    
+    static func makeViewModel(homeserverAddress: String = "matrix.org", withCredentials: Bool = false) -> LoginScreenViewModel {
+        let authenticationService = AuthenticationService.mock
+        
+        Task { await authenticationService.configure(for: homeserverAddress, flow: .login) }
+        
+        let viewModel = LoginScreenViewModel(authenticationService: authenticationService,
+                                             slidingSyncLearnMoreURL: ServiceLocator.shared.settings.slidingSyncLearnMoreURL,
+                                             userIndicatorController: UserIndicatorControllerMock(),
+                                             analytics: ServiceLocator.shared.analytics)
+        
+        if withCredentials {
+            viewModel.context.username = "alice"
+            viewModel.context.password = "password"
+        }
+        
+        return viewModel
     }
 }

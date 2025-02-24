@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import UIKit
@@ -15,14 +15,20 @@ struct EncryptedRoomTimelineItem: EventBasedTimelineItemProtocol, Equatable {
     }
     
     enum UTDCause: Hashable {
-        case membership
+        case sentBeforeWeJoined
+        case verificationViolation
+        case insecureDevice
         case unknown
+        case historicalMessageAndBackupDisabled
+        case historicalMessageAndDeviceIsUnverified
+        case witheldBySender
+        case withheldForUnverifiedOrInsecureDevice
     }
     
     let id: TimelineItemIdentifier
     let body: String
     let encryptionType: EncryptionType
-    let timestamp: String
+    let timestamp: Date
     let isOutgoing: Bool
     let isEditable: Bool
     let canBeRepliedTo: Bool

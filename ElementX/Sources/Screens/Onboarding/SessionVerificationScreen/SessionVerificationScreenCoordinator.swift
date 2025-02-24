@@ -1,19 +1,39 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
+import MatrixRustSDK
 import SwiftUI
 
 enum SessionVerificationScreenCoordinatorAction {
     case done
 }
 
+enum SessionVerificationScreenFlow {
+    case deviceInitiator
+    case deviceResponder(requestDetails: SessionVerificationRequestDetails)
+    case userIntiator(userID: String)
+    case userResponder(requestDetails: SessionVerificationRequestDetails)
+    
+    var isResponder: Bool {
+        switch self {
+        case .deviceInitiator, .userIntiator:
+            false
+        case .deviceResponder, .userResponder:
+            true
+        }
+    }
+}
+
 struct SessionVerificationScreenCoordinatorParameters {
     let sessionVerificationControllerProxy: SessionVerificationControllerProxyProtocol
+    let flow: SessionVerificationScreenFlow
+    let appSettings: AppSettings
+    let mediaProvider: MediaProviderProtocol
 }
 
 final class SessionVerificationScreenCoordinator: CoordinatorProtocol {
@@ -27,7 +47,10 @@ final class SessionVerificationScreenCoordinator: CoordinatorProtocol {
     }
     
     init(parameters: SessionVerificationScreenCoordinatorParameters) {
-        viewModel = SessionVerificationScreenViewModel(sessionVerificationControllerProxy: parameters.sessionVerificationControllerProxy)
+        viewModel = SessionVerificationScreenViewModel(sessionVerificationControllerProxy: parameters.sessionVerificationControllerProxy,
+                                                       flow: parameters.flow,
+                                                       appSettings: parameters.appSettings,
+                                                       mediaProvider: parameters.mediaProvider)
     }
     
     // MARK: - Public

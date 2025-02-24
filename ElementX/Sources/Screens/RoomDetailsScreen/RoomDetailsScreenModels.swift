@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -12,9 +12,10 @@ import SwiftUI
 
 // MARK: View model
 
-enum RoomDetailsScreenViewModelAction {
+enum RoomDetailsScreenViewModelAction: Equatable {
     case requestNotificationSettingsPresentation
     case requestMemberDetailsPresentation
+    case requestRecipientDetailsPresentation(userID: String)
     case requestInvitePeoplePresentation
     case leftRoom
     case requestEditDetailsPresentation
@@ -22,6 +23,9 @@ enum RoomDetailsScreenViewModelAction {
     case requestRolesAndPermissionsPresentation
     case startCall
     case displayPinnedEventsTimeline
+    case displayMediaEventsTimeline
+    case displayKnockingRequests
+    case displaySecurityAndPrivacy
 }
 
 // MARK: View
@@ -35,24 +39,40 @@ struct RoomDetailsScreenViewState: BindableState {
 
     var topic: AttributedString?
     var topicSummary: AttributedString?
+    
     var joinedMembersCount: Int
+    var hasMemberIdentityVerificationStateViolations = false
+    
     var isProcessingIgnoreRequest = false
     var canInviteUsers = false
     var canEditRoomName = false
     var canEditRoomTopic = false
     var canEditRoomAvatar = false
     var canEditRolesOrPermissions = false
+    var canKickUsers = false
+    var canBanUsers = false
     var notificationSettingsState: RoomDetailsNotificationSettingsState = .loading
     var canJoinCall = false
-    var isPinningEnabled = false
     var pinnedEventsActionState = RoomDetailsScreenPinnedEventsActionState.loading
+    
+    var knockingEnabled = false
+    var isKnockableRoom = false
+    var knockRequestsCount = 0
+    
+    var canSeeKnockingRequests: Bool {
+        knockingEnabled && dmRecipient == nil && isKnockableRoom && (canInviteUsers || canKickUsers || canBanUsers)
+    }
+    
+    var canSeeSecurityAndPrivacy: Bool {
+        knockingEnabled && dmRecipient == nil && canEditRolesOrPermissions
+    }
     
     var canEdit: Bool {
         !isDirect && (canEditRoomName || canEditRoomTopic || canEditRoomAvatar)
     }
     
     var hasTopicSection: Bool {
-        topic != nil || (canEdit && canEditRoomTopic)
+        topic != nil || canEditRoomTopic
     }
 
     var bindings: RoomDetailsScreenViewStateBindings
@@ -182,13 +202,17 @@ enum RoomDetailsScreenViewAction {
     case ignoreConfirmed
     case unignoreConfirmed
     case processTapNotifications
+    case processTapRecipientProfile
     case processToggleMuteNotifications
-    case displayAvatar
+    case displayAvatar(URL)
     case processTapPolls
     case toggleFavourite(isFavourite: Bool)
     case processTapRolesAndPermissions
+    case processTapSecurityAndPrivacy
     case processTapCall
     case processTapPinnedEvents
+    case processTapMediaEvents
+    case processTapRequestsToJoin
 }
 
 enum RoomDetailsScreenViewShortcut {

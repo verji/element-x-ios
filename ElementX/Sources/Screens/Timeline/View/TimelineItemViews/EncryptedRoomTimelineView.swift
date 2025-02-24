@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -17,7 +17,13 @@ struct EncryptedRoomTimelineView: View {
             switch cause {
             case .unknown:
                 return \.time
-            case .membership:
+            case .sentBeforeWeJoined,
+                 .historicalMessageAndBackupDisabled,
+                 .historicalMessageAndDeviceIsUnverified,
+                 .verificationViolation,
+                 .insecureDevice,
+                 .witheldBySender,
+                 .withheldForUnverifiedOrInsecureDevice:
                 return \.block
             }
         default:
@@ -56,28 +62,28 @@ struct EncryptedRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static var body: some View {
         VStack(alignment: .leading, spacing: 20.0) {
             EncryptedRoomTimelineView(timelineItem: itemWith(text: L10n.commonWaitingForDecryptionKey,
-                                                             timestamp: "Now",
+                                                             timestamp: .mock,
                                                              isOutgoing: false,
                                                              senderId: "Bob"))
             
             EncryptedRoomTimelineView(timelineItem: itemWith(text: L10n.commonWaitingForDecryptionKey,
-                                                             timestamp: "Later",
+                                                             timestamp: .mock,
                                                              isOutgoing: true,
                                                              senderId: "Anne"))
             
             EncryptedRoomTimelineView(timelineItem: itemWith(text: "Some other text that is very long and will wrap onto multiple lines.",
-                                                             timestamp: "Later",
+                                                             timestamp: .mock,
                                                              isOutgoing: true,
                                                              senderId: "Anne"))
             
-            EncryptedRoomTimelineView(timelineItem: expectedItemWith(timestamp: "Now",
+            EncryptedRoomTimelineView(timelineItem: expectedItemWith(timestamp: .mock,
                                                                      isOutgoing: false,
                                                                      senderId: "Bob"))
         }
     }
     
-    private static func itemWith(text: String, timestamp: String, isOutgoing: Bool, senderId: String) -> EncryptedRoomTimelineItem {
-        EncryptedRoomTimelineItem(id: .random,
+    private static func itemWith(text: String, timestamp: Date, isOutgoing: Bool, senderId: String) -> EncryptedRoomTimelineItem {
+        EncryptedRoomTimelineItem(id: .randomEvent,
                                   body: text,
                                   encryptionType: .unknown,
                                   timestamp: timestamp,
@@ -87,10 +93,10 @@ struct EncryptedRoomTimelineView_Previews: PreviewProvider, TestablePreview {
                                   sender: .init(id: senderId))
     }
     
-    private static func expectedItemWith(timestamp: String, isOutgoing: Bool, senderId: String) -> EncryptedRoomTimelineItem {
-        EncryptedRoomTimelineItem(id: .random,
+    private static func expectedItemWith(timestamp: Date, isOutgoing: Bool, senderId: String) -> EncryptedRoomTimelineItem {
+        EncryptedRoomTimelineItem(id: .randomEvent,
                                   body: L10n.commonUnableToDecryptNoAccess,
-                                  encryptionType: .megolmV1AesSha2(sessionID: "foo", cause: .membership),
+                                  encryptionType: .megolmV1AesSha2(sessionID: "foo", cause: .sentBeforeWeJoined),
                                   timestamp: timestamp,
                                   isOutgoing: isOutgoing,
                                   isEditable: false,

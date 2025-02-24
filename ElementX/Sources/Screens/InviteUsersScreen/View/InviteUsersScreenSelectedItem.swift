@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -50,7 +50,7 @@ struct InviteUsersScreenSelectedItem_Previews: PreviewProvider, TestablePreview 
         ScrollView(.horizontal) {
             HStack(spacing: 28) {
                 ForEach(people, id: \.userID) { user in
-                    InviteUsersScreenSelectedItem(user: user, mediaProvider: MockMediaProvider(), dismissAction: { })
+                    InviteUsersScreenSelectedItem(user: user, mediaProvider: MediaProviderMock(configuration: .init())) { }
                         .frame(width: 72)
                 }
             }

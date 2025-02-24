@@ -1,43 +1,55 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
 import SwiftUI
 
+// Common settings between app and NSE
+protocol CommonSettingsProtocol {
+    var logLevel: LogLevel { get }
+    var enableOnlySignedDeviceIsolationMode: Bool { get }
+    var hideTimelineMedia: Bool { get }
+    var eventCacheEnabled: Bool { get }
+}
+
 /// Store Element specific app settings.
 final class AppSettings {
     private enum UserDefaultsKeys: String {
         case lastVersionLaunched
+        case seenInvites
         case appLockNumberOfPINAttempts
         case appLockNumberOfBiometricAttempts
-        case migratedAccounts
         case timelineStyle
         
         case analyticsConsentState
         case hasRunNotificationPermissionsOnboarding
         case hasRunIdentityConfirmationOnboarding
         
+        case frequentlyUsedSystemEmojis
+        
         case enableNotifications
         case enableInAppNotifications
         case pusherProfileTag
         case logLevel
         case viewSourceEnabled
+        case optimizeMediaUploads
         case appAppearance
         case sharePresence
         case hideUnreadMessagesBadge
+        case hideTimelineMedia
         
         case elementCallBaseURLOverride
-        case elementCallEncryptionEnabled
         
         // Feature flags
-        case slidingSyncDiscovery
         case publicSearchEnabled
         case fuzzyRoomListSearchEnabled
-        case pinningEnabled
+        case enableOnlySignedDeviceIsolationMode
+        case knockingEnabled
+        case eventCacheEnabled
     }
     
     private static var suiteName: String = InfoPlistReader.main.appGroupIdentifier
@@ -93,6 +105,11 @@ final class AppSettings {
     @UserPreference(key: UserDefaultsKeys.lastVersionLaunched, storageType: .userDefaults(store))
     var lastVersionLaunched: String?
         
+    /// The Set of room identifiers of invites that the user already saw in the invites list.
+    /// This Set is being used to implement badges for unread invites.
+    @UserPreference(key: UserDefaultsKeys.seenInvites, defaultValue: [], storageType: .userDefaults(store))
+    var seenInvites: Set<String>
+    
     /// The default homeserver address used. This is intentionally a string without a scheme
     /// so that it can be passed to Rust as a ServerName for well-known discovery.
     private(set) var defaultHomeserverAddress = "matrix.org"
@@ -116,6 +133,8 @@ final class AppSettings {
     let encryptionURL: URL = "https://element.io/help#encryption"
     /// A URL where users can go read more about the chat backup.
     let chatBackupDetailsURL: URL = "https://element.io/help#encryption5"
+    /// A URL where users can go read more about identity pinning violations
+    let identityPinningViolationDetailsURL: URL = "https://element.io/help#encryption18"
     /// Any domains that Element web may be hosted on - used for handling links.
     let elementWebHosts = ["app.element.io", "staging.element.io", "develop.element.io"]
     
@@ -141,14 +160,8 @@ final class AppSettings {
     
     /// Any pre-defined static client registrations for OIDC issuers.
     let oidcStaticRegistrations: [URL: String] = ["https://id.thirdroom.io/realms/thirdroom": "elementx"]
-    /// The redirect URL used for OIDC.
-    let oidcRedirectURL = {
-        guard let url = URL(string: "\(InfoPlistReader.main.appScheme):/callback") else {
-            fatalError("Invalid OIDC redirect URL")
-        }
-        
-        return url
-    }()
+    /// The redirect URL used for OIDC. This no longer uses universal links so we don't need the bundle ID to avoid conflicts between Element X, Nightly and PR builds.
+    let oidcRedirectURL: URL = "https://element.io/oidc/login"
     
     private(set) lazy var oidcConfiguration = OIDCConfigurationProxy(clientName: InfoPlistReader.main.bundleDisplayName,
                                                                      redirectURI: oidcRedirectURL,
@@ -159,14 +172,10 @@ final class AppSettings {
                                                                      contacts: [supportEmailAddress],
                                                                      staticRegistrations: oidcStaticRegistrations.mapKeys { $0.absoluteString },
                                                                      dynamicRegistrationsFile: .sessionsBaseDirectory.appending(path: "oidc/registrations.json"))
-
-    /// A dictionary of accounts that have performed an initial sync through their proxy.
-    ///
-    /// This is a temporary workaround. In the future we should be able to receive a signal from the
-    /// proxy that it is the first sync (or that an upgrade on the backend will involve a slower sync).
-    @UserPreference(key: UserDefaultsKeys.migratedAccounts, defaultValue: [:], storageType: .userDefaults(store))
-    var migratedAccounts: [String: Bool]
-
+    
+    /// A temporary hack to allow registration on matrix.org until MAS is deployed.
+    let webRegistrationEnabled = true
+    
     // MARK: - Notifications
     
     var pusherAppId: String {
@@ -226,6 +235,9 @@ final class AppSettings {
     @UserPreference(key: UserDefaultsKeys.hasRunIdentityConfirmationOnboarding, defaultValue: false, storageType: .userDefaults(store))
     var hasRunIdentityConfirmationOnboarding
     
+    @UserPreference(key: UserDefaultsKeys.frequentlyUsedSystemEmojis, defaultValue: [FrequentlyUsedEmoji](), storageType: .userDefaults(store))
+    var frequentlyUsedSystemEmojis
+    
     // MARK: - Home Screen
     
     @UserPreference(key: UserDefaultsKeys.hideUnreadMessagesBadge, defaultValue: false, storageType: .userDefaults(store))
@@ -235,6 +247,13 @@ final class AppSettings {
     
     @UserPreference(key: UserDefaultsKeys.viewSourceEnabled, defaultValue: isDevelopmentBuild, storageType: .userDefaults(store))
     var viewSourceEnabled
+    
+    @UserPreference(key: UserDefaultsKeys.optimizeMediaUploads, defaultValue: true, storageType: .userDefaults(store))
+    var optimizeMediaUploads
+    
+    /// Whether or not to show a warning on the media caption composer so the user knows
+    /// that captions might not be visible to users who are using other Matrix clients.
+    let shouldShowMediaCaptionWarning = true
 
     // MARK: - Element Call
     
@@ -263,23 +282,31 @@ final class AppSettings {
     
     // MARK: - Feature Flags
     
-    @UserPreference(key: UserDefaultsKeys.publicSearchEnabled, defaultValue: isDevelopmentBuild, storageType: .volatile)
+    @UserPreference(key: UserDefaultsKeys.publicSearchEnabled, defaultValue: false, storageType: .userDefaults(store))
     var publicSearchEnabled
     
     @UserPreference(key: UserDefaultsKeys.fuzzyRoomListSearchEnabled, defaultValue: false, storageType: .userDefaults(store))
     var fuzzyRoomListSearchEnabled
     
-    @UserPreference(key: UserDefaultsKeys.pinningEnabled, defaultValue: false, storageType: .userDefaults(store))
-    var pinningEnabled
+    @UserPreference(key: UserDefaultsKeys.knockingEnabled, defaultValue: false, storageType: .userDefaults(store))
+    var knockingEnabled
     
-    enum SlidingSyncDiscovery: Codable { case proxy, native, forceNative }
-    @UserPreference(key: UserDefaultsKeys.slidingSyncDiscovery, defaultValue: .native, storageType: .userDefaults(store))
-    var slidingSyncDiscovery: SlidingSyncDiscovery
-        
     #endif
     
     // MARK: - Shared
         
-    @UserPreference(key: UserDefaultsKeys.logLevel, defaultValue: TracingConfiguration.LogLevel.info, storageType: .userDefaults(store))
+    @UserPreference(key: UserDefaultsKeys.logLevel, defaultValue: LogLevel.info, storageType: .userDefaults(store))
     var logLevel
+    
+    /// Configuration to enable only signed device isolation mode for  crypto. In this mode only devices signed by their owner will be considered in e2ee rooms.
+    @UserPreference(key: UserDefaultsKeys.enableOnlySignedDeviceIsolationMode, defaultValue: false, storageType: .userDefaults(store))
+    var enableOnlySignedDeviceIsolationMode
+    
+    @UserPreference(key: UserDefaultsKeys.hideTimelineMedia, defaultValue: false, storageType: .userDefaults(store))
+    var hideTimelineMedia
+    
+    @UserPreference(key: UserDefaultsKeys.eventCacheEnabled, defaultValue: false, storageType: .userDefaults(store))
+    var eventCacheEnabled
 }
+
+extension AppSettings: CommonSettingsProtocol { }

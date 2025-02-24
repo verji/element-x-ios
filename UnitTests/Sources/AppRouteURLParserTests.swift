@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -71,33 +71,6 @@ class AppRouteURLParserTests: XCTestCase {
         }
         
         XCTAssertEqual(appRouteURLParser.route(from: customSchemeURL), nil)
-    }
-    
-    func testOIDCCallbackRoute() {
-        // Given an OIDC callback for this app.
-        let callbackURL = appSettings.oidcRedirectURL.appending(queryItems: [URLQueryItem(name: "state", value: "12345"),
-                                                                             URLQueryItem(name: "code", value: "67890")])
-        
-        // When parsing that route.
-        let route = appRouteURLParser.route(from: callbackURL)
-        
-        // Then it should be considered a valid OIDC callback.
-        XCTAssertEqual(route, AppRoute.oidcCallback(url: callbackURL))
-    }
-    
-    func testOIDCCallbackAppVariantRoute() {
-        // Given an OIDC callback for a different app variant.
-        let callbackURL = appSettings.oidcRedirectURL
-            .deletingLastPathComponent()
-            .appending(component: "elementz")
-            .appending(queryItems: [URLQueryItem(name: "state", value: "12345"),
-                                    URLQueryItem(name: "code", value: "67890")])
-        
-        // When parsing that route in this app.
-        let route = appRouteURLParser.route(from: callbackURL)
-        
-        // Then the route shouldn't be considered valid and should be ignored.
-        XCTAssertEqual(route, nil)
     }
     
     func testMatrixUserURL() {

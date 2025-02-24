@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -120,7 +120,7 @@ final class NotificationSettingsProxy: NotificationSettingsProxyProtocol {
         // as in this case no API call is made by the RustSDK and the push rules are therefore not updated.
         _ = await callbacks
             .timeout(.seconds(2.0), scheduler: DispatchQueue.main, options: nil, customError: nil)
-            .values.first(where: { $0 == .settingsDidChange })
+            .values.first { $0 == .settingsDidChange }
     }
     
     @MainActor

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -11,7 +11,6 @@ import MatrixRustSDK
 
 class RoomSummaryProvider: RoomSummaryProviderProtocol {
     private let roomListService: RoomListServiceProtocol
-    private let roomListServiceStatePublisher: CurrentValuePublisher<RoomListServiceState, Never>
     private let eventStringBuilder: RoomEventStringBuilder
     private let name: String
     private let shouldUpdateVisibleRange: Bool
@@ -57,14 +56,12 @@ class RoomSummaryProvider: RoomSummaryProviderProtocol {
     ///   to the room list service through the `applyInput(input: .viewport(ranges` api. Only useful for
     ///   lists that need to update the visible range on Sliding Sync
     init(roomListService: RoomListServiceProtocol,
-         roomListServiceStatePublisher: CurrentValuePublisher<RoomListServiceState, Never>,
          eventStringBuilder: RoomEventStringBuilder,
          name: String,
          shouldUpdateVisibleRange: Bool = false,
          notificationSettings: NotificationSettingsProxyProtocol,
          appSettings: AppSettings) {
         self.roomListService = roomListService
-        self.roomListServiceStatePublisher = roomListServiceStatePublisher
         serialDispatchQueue = DispatchQueue(label: "io.element.elementx.roomsummaryprovider", qos: .default)
         self.eventStringBuilder = eventStringBuilder
         self.name = name
@@ -77,16 +74,7 @@ class RoomSummaryProvider: RoomSummaryProviderProtocol {
             .sink { [weak self] in self?.updateRoomsWithDiffs($0) }
             .store(in: &cancellables)
         
-        roomListServiceStateCancellable = roomListServiceStatePublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] state in
-                guard let self else { return }
-                
-                if state == .running {
-                    setupVisibleRangeObservers()
-                    roomListServiceStateCancellable = nil
-                }
-            }
+        setupVisibleRangeObservers()
         
         setupNotificationSettingsSubscription()
     }
@@ -187,13 +175,8 @@ class RoomSummaryProvider: RoomSummaryProviderProtocol {
             .sink { [weak self] roomIDs in
                 guard let self else { return }
                 
-                MXLog.debug("\(self.name): Updating subscriptions for visible rooms: \(roomIDs)")
-                
                 do {
-                    try roomListService.subscribeToRooms(roomIds: roomIDs,
-                                                         settings: .init(requiredState: SlidingSyncConstants.defaultRequiredState,
-                                                                         timelineLimit: SlidingSyncConstants.defaultTimelineLimit,
-                                                                         includeHeroes: false))
+                    try roomListService.subscribeToRooms(roomIds: roomIDs)
                 } catch {
                     MXLog.error("Failed subscribing to rooms with error: \(error)")
                 }
@@ -208,13 +191,9 @@ class RoomSummaryProvider: RoomSummaryProviderProtocol {
             span.exit()
         }
         
-        MXLog.info("\(name): Received \(diffs.count) diffs")
-        
         rooms = diffs.reduce(rooms) { currentItems, diff in
             processDiff(diff, on: currentItems)
         }
-        
-        MXLog.info("Finished processing room list diffs")
     }
     
     private func processDiff(_ diff: RoomListEntriesUpdate, on currentItems: [RoomSummary]) -> [RoomSummary] {
@@ -264,7 +243,7 @@ class RoomSummaryProvider: RoomSummaryProviderProtocol {
         var lastMessageFormattedTimestamp: String?
         
         if let latestRoomMessage = roomDetails.latestEvent {
-            let lastMessage = EventTimelineItemProxy(item: latestRoomMessage, id: "0")
+            let lastMessage = EventTimelineItemProxy(item: latestRoomMessage, uniqueID: .init("0"))
             lastMessageFormattedTimestamp = lastMessage.timestamp.formattedMinimal()
             attributedLastMessage = eventStringBuilder.buildAttributedString(for: lastMessage)
         }
@@ -276,10 +255,15 @@ class RoomSummaryProvider: RoomSummaryProviderProtocol {
         
         let notificationMode = roomInfo.cachedUserDefinedNotificationMode.flatMap { RoomNotificationModeProxy.from(roomNotificationMode: $0) }
         
+        let joinRequestType: RoomSummary.JoinRequestType? = switch roomInfo.membership {
+        case .invited: .invite(inviter: inviterProxy)
+        case .knocked: .knock
+        default: nil
+        }
+        
         return RoomSummary(roomListItem: roomListItem,
                            id: roomInfo.id,
-                           isInvite: roomInfo.membership == .invited,
-                           inviter: inviterProxy,
+                           joinRequestType: joinRequestType,
                            name: roomInfo.displayName ?? roomInfo.id,
                            isDirect: roomInfo.isDirect,
                            avatarURL: roomInfo.avatarUrl.flatMap(URL.init(string:)),

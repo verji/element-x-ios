@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -62,13 +62,13 @@ struct RoomInviterLabel_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         VStack(spacing: 10) {
             RoomInviterLabel(inviter: .init(member: RoomMemberProxyMock.mockAlice),
-                             mediaProvider: MockMediaProvider())
+                             mediaProvider: MediaProviderMock(configuration: .init()))
             RoomInviterLabel(inviter: .init(member: RoomMemberProxyMock.mockDan),
-                             mediaProvider: MockMediaProvider())
+                             mediaProvider: MediaProviderMock(configuration: .init()))
             RoomInviterLabel(inviter: .init(member: RoomMemberProxyMock.mockNoName),
-                             mediaProvider: MockMediaProvider())
+                             mediaProvider: MediaProviderMock(configuration: .init()))
             RoomInviterLabel(inviter: .init(member: RoomMemberProxyMock.mockCharlie),
-                             mediaProvider: MockMediaProvider())
+                             mediaProvider: MediaProviderMock(configuration: .init()))
                 .foregroundStyle(.compound.textPrimary)
         }
         .font(.compound.bodyMD)

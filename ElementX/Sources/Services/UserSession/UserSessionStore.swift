@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -14,7 +14,6 @@ class UserSessionStore: UserSessionStoreProtocol {
     private let appSettings: AppSettings
     private let networkMonitor: NetworkMonitorProtocol
     private let appHooks: AppHooks
-    private let matrixSDKStateKey = "matrix-sdk-state"
     
     /// Whether or not there are sessions in the store.
     var hasSessions: Bool { !keychainController.restorationTokens().isEmpty }
@@ -55,24 +54,26 @@ class UserSessionStore: UserSessionStoreProtocol {
             
             // On any restoration failure reset the token and restart
             keychainController.removeRestorationTokenForUsername(credentials.userID)
-            deleteSessionDirectories(for: credentials)
+            credentials.restorationToken.sessionDirectories.delete()
             
             return .failure(error)
         }
     }
     
-    func userSession(for client: Client, sessionDirectories: SessionDirectories, passphrase: String?) async -> Result<UserSessionProtocol, UserSessionStoreError> {
+    func userSession(for client: ClientProtocol, sessionDirectories: SessionDirectories, passphrase: String?) async -> Result<UserSessionProtocol, UserSessionStoreError> {
         do {
             let session = try client.session()
             let userID = try client.userId()
-            let clientProxy = await setupProxyForClient(client)
+            let clientProxy = await setupProxyForClient(client, needsSlidingSyncMigration: false)
             
             keychainController.setRestorationToken(RestorationToken(session: session,
-                                                                    sessionDirectory: sessionDirectories.dataDirectory,
-                                                                    cacheDirectory: sessionDirectories.cacheDirectory,
+                                                                    sessionDirectories: sessionDirectories,
                                                                     passphrase: passphrase,
-                                                                    pusherNotificationClientIdentifier: clientProxy.pusherNotificationClientIdentifier),
+                                                                    pusherNotificationClientIdentifier: clientProxy.pusherNotificationClientIdentifier,
+                                                                    slidingSyncProxyURLString: nil),
                                                    forUsername: userID)
+            
+            MXLog.info("Set up session for user \(userID) at: \(sessionDirectories)")
             
             return .success(buildUserSessionWithClient(clientProxy))
         } catch {
@@ -87,7 +88,7 @@ class UserSessionStore: UserSessionStoreProtocol {
         keychainController.removeRestorationTokenForUsername(userID)
         
         if let credentials {
-            deleteSessionDirectories(for: credentials)
+            credentials.restorationToken.sessionDirectories.delete()
         }
     }
     
@@ -96,7 +97,7 @@ class UserSessionStore: UserSessionStoreProtocol {
             MXLog.error("Failed to clearing caches: Credentials missing")
             return
         }
-        deleteCaches(for: credentials)
+        credentials.restorationToken.sessionDirectories.deleteTransientUserData()
     }
     
     // MARK: - Private
@@ -118,15 +119,22 @@ class UserSessionStore: UserSessionStoreProtocol {
             MXLog.info("Restoring client with encrypted store.")
         }
         
+        guard credentials.restorationToken.sessionDirectories.isNonTransientUserDataValid() else {
+            MXLog.error("Failed restoring login, missing non-transient user data")
+            return .failure(.failedRestoringLogin)
+        }
+        
         let homeserverURL = credentials.restorationToken.session.homeserverUrl
         
         let builder = ClientBuilder
             .baseBuilder(httpProxy: URL(string: homeserverURL)?.globalProxy,
                          slidingSync: .restored,
                          sessionDelegate: keychainController,
-                         appHooks: appHooks)
-            .sessionPaths(dataPath: credentials.restorationToken.sessionDirectory.path(percentEncoded: false),
-                          cachePath: credentials.restorationToken.cacheDirectory.path(percentEncoded: false))
+                         appHooks: appHooks,
+                         enableOnlySignedDeviceIsolationMode: appSettings.enableOnlySignedDeviceIsolationMode,
+                         eventCacheEnabled: appSettings.eventCacheEnabled)
+            .sessionPaths(dataPath: credentials.restorationToken.sessionDirectories.dataPath,
+                          cachePath: credentials.restorationToken.sessionDirectories.cachePath)
             .username(username: credentials.userID)
             .homeserverUrl(url: homeserverURL)
             .passphrase(passphrase: credentials.restorationToken.passphrase)
@@ -136,49 +144,19 @@ class UserSessionStore: UserSessionStoreProtocol {
             
             try await client.restoreSession(session: credentials.restorationToken.session)
             
-            return await .success(setupProxyForClient(client))
+            MXLog.info("Set up session for user \(credentials.userID) at: \(credentials.restorationToken.sessionDirectories)")
+            
+            return await .success(setupProxyForClient(client, needsSlidingSyncMigration: credentials.restorationToken.needsSlidingSyncMigration))
         } catch {
             MXLog.error("Failed restoring login with error: \(error)")
             return .failure(.failedRestoringLogin)
         }
     }
     
-    private func setupProxyForClient(_ client: Client) async -> ClientProxyProtocol {
+    private func setupProxyForClient(_ client: ClientProtocol, needsSlidingSyncMigration: Bool) async -> ClientProxyProtocol {
         await ClientProxy(client: client,
+                          needsSlidingSyncMigration: needsSlidingSyncMigration,
                           networkMonitor: networkMonitor,
                           appSettings: appSettings)
-    }
-    
-    private func deleteSessionDirectories(for credentials: KeychainCredentials) {
-        do {
-            try FileManager.default.removeItem(at: credentials.restorationToken.sessionDirectory)
-        } catch {
-            MXLog.failure("Failed deleting the session data: \(error)")
-        }
-        do {
-            try FileManager.default.removeItem(at: credentials.restorationToken.cacheDirectory)
-        } catch {
-            MXLog.failure("Failed deleting the session caches: \(error)")
-        }
-    }
-    
-    private func deleteCaches(for credentials: KeychainCredentials) {
-        do {
-            try deleteContentsOfDirectory(at: credentials.restorationToken.sessionDirectory)
-        } catch {
-            MXLog.failure("Failed clearing state store: \(error)")
-        }
-        do {
-            try deleteContentsOfDirectory(at: credentials.restorationToken.cacheDirectory)
-        } catch {
-            MXLog.failure("Failed clearing event cache store: \(error)")
-        }
-    }
-    
-    private func deleteContentsOfDirectory(at url: URL) throws {
-        let sessionDirectoryContents = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-        for url in sessionDirectoryContents where url.path.contains(matrixSDKStateKey) {
-            try FileManager.default.removeItem(at: url)
-        }
     }
 }

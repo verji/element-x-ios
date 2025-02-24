@@ -46,8 +46,8 @@ struct BuildSDK: ParsableCommand {
                 Rust is missing the necessary targets to build the SDK.
                 Run the following command to install them:
                 
-                rustup target add \(missingTargets.joined(separator: " ")) --toolchain nightly
-                
+                rustup target add \(missingTargets.joined(separator: " "))
+
                 """
             default:
                 return nil

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -65,8 +65,8 @@ struct PollFormScreen: View {
                     }
                     .focused($focus, equals: .option(index: index))
                     .accessibilityIdentifier(A11yIdentifiers.pollFormScreen.optionID(index))
-                    .onChange(of: context.options[index].text) { optionText in
-                        guard let lastCharacter = optionText.last, lastCharacter.isNewline else {
+                    .onChange(of: context.options[index].text) { _, newOptionText in
+                        guard let lastCharacter = newOptionText.last, lastCharacter.isNewline else {
                             return
                         }
                         

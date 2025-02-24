@@ -13,7 +13,7 @@ on:
 jobs:
   tests:
     name: Tests
-    runs-on: macos-14
+    runs-on: perf-only
 
     concurrency:
       # Only allow a single run of this workflow on each branch, automatically cancelling older runs.
@@ -59,9 +59,22 @@ jobs:
         run: xcresultparser -q -o cobertura -t ElementX -p $(pwd) fastlane/test_output/UITests.xcresult > fastlane/test_output/ui-cobertura.xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: uitests
-    
+          version: v0.7.3
+
+      - name: Collect test results
+        if: ${{ !cancelled() }}
+        run: xcresultparser -q -o junit -p $(pwd) fastlane/test_output/UITests.xcresult > fastlane/test_output/ui-junit.xml
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        continue-on-error: true
+        with:
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: uitests

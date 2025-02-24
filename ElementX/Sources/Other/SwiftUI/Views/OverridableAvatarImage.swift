@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -12,12 +12,12 @@ struct OverridableAvatarImage: View {
     private let url: URL?
     private let name: String?
     private let contentID: String?
-    private let avatarSize: AvatarSize
+    private let avatarSize: Avatars.Size
     private let mediaProvider: MediaProviderProtocol?
     
     @ScaledMetric private var frameSize: CGFloat
     
-    init(overrideURL: URL?, url: URL?, name: String?, contentID: String?, avatarSize: AvatarSize, mediaProvider: MediaProviderProtocol?) {
+    init(overrideURL: URL?, url: URL?, name: String?, contentID: String?, avatarSize: Avatars.Size, mediaProvider: MediaProviderProtocol?) {
         self.overrideURL = overrideURL
         self.url = url
         self.name = name

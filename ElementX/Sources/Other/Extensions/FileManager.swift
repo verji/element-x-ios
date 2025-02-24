@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -38,7 +38,7 @@ extension FileManager {
 
     @discardableResult
     func writeDataToTemporaryDirectory(data: Data, fileName: String) throws -> URL {
-        let newURL = URL.temporaryDirectory.appendingPathComponent(fileName)
+        let newURL = URL.appGroupTemporaryDirectory.appendingPathComponent(fileName)
         
         try data.write(to: newURL)
         
@@ -56,5 +56,9 @@ extension FileManager {
         }
         
         return size
+    }
+    
+    func numberOfItems(at url: URL) throws -> Int {
+        try contentsOfDirectory(at: url, includingPropertiesForKeys: nil).count
     }
 }

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -161,8 +161,8 @@ class RoomChangeRolesScreenViewModelTests: XCTestCase {
         // Then no warning should be shown, and the call to update the users should be made straight away.
         XCTAssertTrue(roomProxy.updatePowerLevelsForUsersCalled)
         XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.count, 2)
-        XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.contains(where: { $0.userID == existingModerator.id && $0.powerLevel == 0 }), true)
-        XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.contains(where: { $0.userID == firstUser.id && $0.powerLevel == 50 }), true)
+        XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.contains { $0.userID == existingModerator.id && $0.powerLevel == 0 }, true)
+        XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.contains { $0.userID == firstUser.id && $0.powerLevel == 50 }, true)
     }
     
     func testSavePromotedAdministrator() async throws {
@@ -189,14 +189,14 @@ class RoomChangeRolesScreenViewModelTests: XCTestCase {
         // Then the user should be made into an administrator.
         XCTAssertTrue(roomProxy.updatePowerLevelsForUsersCalled)
         XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.count, 1)
-        XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.contains(where: { $0.userID == firstUser.id && $0.powerLevel == 100 }), true)
+        XCTAssertEqual(roomProxy.updatePowerLevelsForUsersReceivedUpdates?.contains { $0.userID == firstUser.id && $0.powerLevel == 100 }, true)
     }
     
     private func setupViewModel(mode: RoomMemberDetails.Role) {
         roomProxy = JoinedRoomProxyMock(.init(members: .allMembersAsAdmin))
         viewModel = RoomChangeRolesScreenViewModel(mode: mode,
                                                    roomProxy: roomProxy,
-                                                   mediaProvider: MockMediaProvider(),
+                                                   mediaProvider: MediaProviderMock(configuration: .init()),
                                                    userIndicatorController: UserIndicatorControllerMock(),
                                                    analytics: ServiceLocator.shared.analytics)
     }

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -22,10 +22,9 @@ final class DeveloperOptionsScreenCoordinator: CoordinatorProtocol {
         actionsSubject.eraseToAnyPublisher()
     }
     
-    init(isUsingNativeSlidingSync: Bool) {
+    init() {
         viewModel = DeveloperOptionsScreenViewModel(developerOptions: ServiceLocator.shared.settings,
-                                                    elementCallBaseURL: ServiceLocator.shared.settings.elementCallBaseURL,
-                                                    isUsingNativeSlidingSync: isUsingNativeSlidingSync)
+                                                    elementCallBaseURL: ServiceLocator.shared.settings.elementCallBaseURL)
         
         viewModel.actions
             .sink { [weak self] action in

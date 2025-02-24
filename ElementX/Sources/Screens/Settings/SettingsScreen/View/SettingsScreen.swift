@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -29,6 +29,8 @@ struct SettingsScreen: View {
             }
             
             generalSection
+            
+            signOutSection
         }
         .compoundList()
         .navigationTitle(L10n.commonSettings)
@@ -88,7 +90,7 @@ struct SettingsScreen: View {
             
             switch context.viewState.securitySectionMode {
             case .secureBackup:
-                ListRow(label: .default(title: L10n.commonChatBackup,
+                ListRow(label: .default(title: L10n.commonEncryption,
                                         icon: \.key),
                         details: context.viewState.showSecuritySectionBadge ? .icon(securitySectionBadge) : nil,
                         kind: .navigationLink { context.send(viewAction: .secureBackup) })
@@ -167,7 +169,11 @@ struct SettingsScreen: View {
                         })
                         .accessibilityIdentifier(A11yIdentifiers.settingsScreen.developerOptions)
             }
-            
+        }
+    }
+    
+    private var signOutSection: some View {
+        Section {
             ListRow(label: .action(title: L10n.screenSignoutPreferenceItem,
                                    icon: \.signOut,
                                    role: .destructive),
@@ -175,6 +181,15 @@ struct SettingsScreen: View {
                         context.send(viewAction: .logout)
                     })
                     .accessibilityIdentifier(A11yIdentifiers.settingsScreen.logout)
+            
+            if context.viewState.showAccountDeactivation {
+                ListRow(label: .action(title: L10n.actionDeactivateAccount,
+                                       icon: \.warning,
+                                       role: .destructive),
+                        kind: .navigationLink {
+                            context.send(viewAction: .deactivateAccount)
+                        })
+            }
         } footer: {
             VStack(spacing: 0) {
                 versionText
@@ -224,7 +239,9 @@ struct SettingsScreen_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         NavigationStack {
             SettingsScreen(context: viewModel.context)
-                .snapshot(delay: 1.0)
+                .snapshotPreferences(expect: viewModel.context.$viewState.map { state in
+                    state.accountSessionsListURL != nil
+                })
         }
     }
 }

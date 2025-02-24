@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -15,14 +15,14 @@ class UserProfileScreenViewModelTests: XCTestCase {
     var context: UserProfileScreenViewModelType.Context { viewModel.context }
 
     func testInitialState() async throws {
-        let profile = UserProfileProxy(userID: "@alice:matrix.org", displayName: "Alice", avatarURL: .picturesDirectory)
+        let profile = UserProfileProxy(userID: "@alice:matrix.org", displayName: "Alice", avatarURL: .mockMXCAvatar)
         let clientProxy = ClientProxyMock(.init())
         clientProxy.profileForReturnValue = .success(profile)
         
         viewModel = UserProfileScreenViewModel(userID: profile.userID,
                                                isPresentedModally: false,
                                                clientProxy: clientProxy,
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                analytics: ServiceLocator.shared.analytics)
         
@@ -35,14 +35,14 @@ class UserProfileScreenViewModelTests: XCTestCase {
     }
     
     func testInitialStateAccountOwner() async throws {
-        let profile = UserProfileProxy(userID: RoomMemberProxyMock.mockMe.userID, displayName: "Me", avatarURL: .picturesDirectory)
+        let profile = UserProfileProxy(userID: RoomMemberProxyMock.mockMe.userID, displayName: "Me", avatarURL: .mockMXCAvatar)
         let clientProxy = ClientProxyMock(.init())
         clientProxy.profileForReturnValue = .success(profile)
         
         viewModel = UserProfileScreenViewModel(userID: profile.userID,
                                                isPresentedModally: false,
                                                clientProxy: clientProxy,
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                analytics: ServiceLocator.shared.analytics)
         

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -71,8 +71,8 @@ struct RoomChangeRolesScreen: View {
                         .frame(width: cellWidth)
                     }
                 }
-                .onChange(of: context.viewState.lastPromotedMember) { member in
-                    guard let member else { return }
+                .onChange(of: context.viewState.lastPromotedMember) { _, newValue in
+                    guard let member = newValue else { return }
                     withElementAnimation(.easeInOut) {
                         scrollView.scrollTo(member.id)
                     }
@@ -122,7 +122,7 @@ struct RoomChangeRolesScreen_Previews: PreviewProvider, TestablePreview {
     static func makeViewModel(mode: RoomMemberDetails.Role) -> RoomChangeRolesScreenViewModel {
         RoomChangeRolesScreenViewModel(mode: mode,
                                        roomProxy: JoinedRoomProxyMock(.init(members: .allMembersAsAdmin)),
-                                       mediaProvider: MockMediaProvider(),
+                                       mediaProvider: MediaProviderMock(configuration: .init()),
                                        userIndicatorController: UserIndicatorControllerMock(),
                                        analytics: ServiceLocator.shared.analytics)
     }

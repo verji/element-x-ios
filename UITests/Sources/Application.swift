@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SnapshotTesting
@@ -10,6 +10,10 @@ import XCTest
 
 enum Application {
     static func launch(_ identifier: UITestsScreenIdentifier, disableTimelineAccessibility: Bool = true) -> XCUIApplication {
+        if ProcessInfo().environment["RECORD_FAILURES"].map(Bool.init) == true {
+            XCUIApplication.recordMode = .failed
+        }
+        
         checkEnvironments()
         
         let app = XCUIApplication()
@@ -28,28 +32,35 @@ enum Application {
     }
     
     private static func checkEnvironments() {
-        let requirediPhoneSimulator = "iPhone15,4" // iPhone 15
+        let requirediPhoneSimulator = "iPhone17,3" // iPhone 16
         let requirediPadSimulator = "iPad13,18" // iPad (10th generation)
-        let requiredOSVersion = 17
+        let requiredOSVersion = 18
         
         let osVersion = ProcessInfo().operatingSystemVersion
         guard osVersion.majorVersion == requiredOSVersion else {
             fatalError("Switch to iOS \(requiredOSVersion) for these tests.")
         }
         
-        guard let deviceModel = ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"],
-              deviceModel == requirediPhoneSimulator || deviceModel == requirediPadSimulator else {
-            fatalError("Switch to using \(requirediPhoneSimulator) or \(requirediPadSimulator) for these tests.")
+        guard let deviceModel = ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] else {
+            fatalError("Unknown simulator.")
+        }
+        guard deviceModel == requirediPhoneSimulator || deviceModel == requirediPadSimulator else {
+            fatalError("Running on \(deviceModel) but we only support \(requirediPhoneSimulator) and \(requirediPadSimulator).")
+        }
+        guard UIDevice.current.snapshotName == "iPhone-18.1" || UIDevice.current.snapshotName == "iPad-18.1" else {
+            fatalError("Running on a simulator that hasn't been renamed to match the expected snapshot filenames.")
         }
     }
 }
 
 extension XCUIApplication {
-    @MainActor
+    static var recordMode: SnapshotTestingConfiguration.Record = .missing
+    
     /// Assert screenshot for a screen with the given identifier. Does not fail if a screenshot is newly created.
     /// - Parameter identifier: Identifier of the UI test screen
     /// - Parameter step: An optional integer that can be used to take multiple snapshots per test identifier.
     /// - Parameter insets: Optional insets with which to crop the image by.
+    @MainActor
     func assertScreenshot(_ identifier: UITestsScreenIdentifier, step: Int? = nil, insets: UIEdgeInsets? = nil, delay: Duration = .seconds(1), precision: Float = 0.99) async throws {
         var snapshotName = identifier.rawValue
         if let step {
@@ -67,31 +78,23 @@ extension XCUIApplication {
             snapshot = snapshot.inset(by: insets)
         }
 
-        let failure = verifySnapshot(of: snapshot,
-                                     as: .image(precision: precision,
-                                                perceptualPrecision: 0.98,
-                                                scale: nil),
-                                     // use any kind of suffix here to snapshot the same file multiple times and avoid countering on the library side
-                                     named: "UI",
-                                     testName: snapshotName)
+        let failure = withSnapshotTesting(record: Self.recordMode) {
+            verifySnapshot(of: snapshot,
+                           as: .image(precision: precision,
+                                      perceptualPrecision: 0.98,
+                                      scale: nil),
+                           // use any kind of suffix here to snapshot the same file multiple times and avoid countering on the library side
+                           named: "UI",
+                           testName: snapshotName)
+        }
         
-        if let failure,
-           !failure.contains("No reference was found on disk."),
-           !failure.contains("to test against the newly-recorded snapshot") {
+        if let failure {
             XCTFail(failure)
         }
     }
     
     private var deviceName: String {
-        var name = UIDevice.current.name
-        
-        // When running with parallel execution simulators are named "Clone 2 of iPhone 14" etc.
-        // Tidy this prefix out of the name to generate snapshots with the correct name.
-        if name.starts(with: "Clone "), let range = name.range(of: " of ") {
-            name = String(name[range.upperBound...])
-        }
-        
-        return name
+        UIDevice.current.snapshotName
     }
     
     private var localeCode: String {
@@ -107,6 +110,20 @@ extension XCUIApplication {
 
     private var regionCode: String {
         Locale.current.language.region?.identifier ?? ""
+    }
+}
+
+private extension UIDevice {
+    var snapshotName: String {
+        var name = name
+        
+        // When running with parallel execution simulators are named "Clone 2 of iPhone 14" etc.
+        // Tidy this prefix out of the name to generate snapshots with the correct name.
+        if name.starts(with: "Clone "), let range = name.range(of: " of ") {
+            name = String(name[range.upperBound...])
+        }
+        
+        return name
     }
 }
 

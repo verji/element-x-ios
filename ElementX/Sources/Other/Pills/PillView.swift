@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -30,14 +30,14 @@ struct PillView: View {
             .padding(.trailing, 6)
             .padding(.vertical, 1)
             .background { Capsule().foregroundColor(backgroundColor) }
-            .onChange(of: context.viewState.displayText) { _ in
+            .onChange(of: context.viewState.displayText) {
                 didChangeText()
             }
     }
 }
 
 struct PillView_Previews: PreviewProvider, TestablePreview {
-    static let mockMediaProvider = MockMediaProvider()
+    static let mockMediaProvider = MediaProviderMock(configuration: .init())
     
     static var previews: some View {
         PillView(mediaProvider: mockMediaProvider,

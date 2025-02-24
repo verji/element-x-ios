@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -14,6 +14,7 @@ struct StartChatScreenCoordinatorParameters {
     let userIndicatorController: UserIndicatorControllerProtocol
     weak var navigationStackCoordinator: NavigationStackCoordinator?
     let userDiscoveryService: UserDiscoveryServiceProtocol
+    let mediaUploadingPreprocessor: MediaUploadingPreprocessor
 }
 
 enum StartChatScreenCoordinatorAction {
@@ -134,7 +135,6 @@ final class StartChatScreenCoordinator: CoordinatorProtocol {
     
     // MARK: - Private
     
-    let mediaUploadingPreprocessor = MediaUploadingPreprocessor()
     private func displayMediaPickerWithSource(_ source: MediaPickerScreenSource) {
         let stackCoordinator = NavigationStackCoordinator()
         
@@ -159,7 +159,7 @@ final class StartChatScreenCoordinator: CoordinatorProtocol {
         Task { [weak self] in
             guard let self else { return }
             do {
-                let media = try await mediaUploadingPreprocessor.processMedia(at: url).get()
+                let media = try await parameters.mediaUploadingPreprocessor.processMedia(at: url).get()
                 var parameters = createRoomParameters.value
                 parameters.avatarImageMedia = media
                 createRoomParameters.send(parameters)

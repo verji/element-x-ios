@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -19,9 +19,10 @@ struct EncryptionResetScreen: View {
                 context.send(viewAction: .reset)
             }
             .buttonStyle(.compound(.primary))
+            .accessibilityIdentifier(A11yIdentifiers.encryptionResetScreen.continueReset)
         }
         .background()
-        .backgroundStyle(.compound.bgSubtleSecondary)
+        .backgroundStyle(.compound.bgCanvasDefault)
         .interactiveDismissDisabled()
         .toolbar { toolbar }
         .toolbar(.visible, for: .navigationBar)
@@ -39,7 +40,7 @@ struct EncryptionResetScreen: View {
     
     private var header: some View {
         VStack(spacing: 8) {
-            HeroImage(icon: \.error, style: .critical)
+            BigIcon(icon: \.errorSolid, style: .alertSolid)
                 .padding(.bottom, 8)
             
             Text(L10n.screenEncryptionResetTitle)
@@ -70,16 +71,11 @@ struct EncryptionResetScreen: View {
 
     @ViewBuilder
     private func checkMarkItem(title: String, position: ListPosition, positive: Bool) -> some View {
-        RoundedLabelItem(title: title, listPosition: position) {
-            if positive {
-                CompoundIcon(\.check)
-                    .foregroundColor(.compound.iconAccentPrimary)
-            } else {
-                CompoundIcon(\.close)
-                    .foregroundColor(.compound.iconCriticalPrimary)
-            }
+        VisualListItem(title: title, position: position) {
+            CompoundIcon(positive ? \.check : \.info)
+                .foregroundColor(positive ? .compound.iconAccentPrimary : .compound.iconSecondary)
+                .alignmentGuide(.top) { _ in 2 }
         }
-        .backgroundStyle(.compound.bgCanvasDefault)
     }
     
     @ToolbarContentBuilder

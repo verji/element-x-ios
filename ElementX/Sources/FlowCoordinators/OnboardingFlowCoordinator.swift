@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -38,7 +38,7 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
     
     enum Event: EventType {
         case next
-        case nextSkippingIdentityConfimed
+        case nextSkippingIdentityConfirmed
     }
     
     private let stateMachine: StateMachine<State, Event>
@@ -46,6 +46,8 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
     
     // periphery: ignore - used to store the coordinator to avoid deallocation
     private var appLockFlowCoordinator: AppLockSetupFlowCoordinator?
+    // periphery: ignore - used to store the coordinator to avoid deallocation
+    private var encryptionResetFlowCoordinator: EncryptionResetFlowCoordinator?
     
     private let actionsSubject: PassthroughSubject<OnboardingFlowCoordinatorAction, Never> = .init()
     var actions: AnyPublisher<OnboardingFlowCoordinatorAction, Never> {
@@ -77,6 +79,8 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
         
         stateMachine = .init(state: .initial)
         
+        configureStateMachine()
+        
         // Verification can change as part of the onboarding flow by verifying with
         // another device, using a recovery key or by resetting one's crypto identity.
         // It can also happen that onboarding started before it had a chance to update,
@@ -84,15 +88,14 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
         // Handle all those cases here instead of spreading them throughout the code.
         verificationStateCancellable = userSession.sessionSecurityStatePublisher
             .map(\.verificationState)
-            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] value in
                 guard let self,
                       value == .verified,
                       stateMachine.state == .identityConfirmation else { return }
                 
                 appSettings.hasRunIdentityConfirmationOnboarding = true
-                stateMachine.tryEvent(.nextSkippingIdentityConfimed)
-                self.verificationStateCancellable = nil
+                stateMachine.tryEvent(.nextSkippingIdentityConfirmed)
             }
     }
     
@@ -108,8 +111,6 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
         guard shouldStart else {
             fatalError("This flow coordinator shouldn't have been started")
         }
-        
-        configureStateMachine()
         
         rootNavigationStackCoordinator.setFullScreenCoverCoordinator(navigationStackCoordinator, animated: !isNewLogin)
 
@@ -144,6 +145,7 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
     }
     
     private func configureStateMachine() {
+        stateMachine.addRoute(.init(fromState: .finished, toState: .initial))
         stateMachine.addRouteMapping { [weak self] event, fromState, _ in
             guard let self else {
                 return nil
@@ -162,7 +164,7 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
                 return .finished
                 
             case (.identityConfirmation, _, _, _, _):
-                if event == .nextSkippingIdentityConfimed {
+                if event == .nextSkippingIdentityConfirmed {
                     // Used when the verification state has updated to verified
                     // after starting the onboarding flow
                     switch (requiresAppLockSetup, requiresAnalyticsSetup, requiresNotificationsSetup) {
@@ -223,8 +225,17 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
                 presentNotificationPermissionsScreen()
             case (_, _, .finished):
                 rootNavigationStackCoordinator.setFullScreenCoverCoordinator(nil)
+                stateMachine.tryState(.initial)
+            case (.finished, _, .initial):
+                break
             default:
                 fatalError("Unknown transition: \(context)")
+            }
+            
+            if let event = context.event {
+                MXLog.info("Transitioning from `\(context.fromState)` to `\(context.toState)` with event `\(event)`")
+            } else {
+                MXLog.info("Transitioning from \(context.fromState)` to `\(context.toState)`")
             }
         }
         
@@ -244,16 +255,14 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
             
             switch action {
             case .otherDevice:
-                Task {
-                    await self.presentSessionVerificationScreen()
-                }
+                presentSessionVerificationScreen()
             case .recoveryKey:
                 presentRecoveryKeyScreen()
             case .skip:
                 appSettings.hasRunIdentityConfirmationOnboarding = true
-                stateMachine.tryEvent(.nextSkippingIdentityConfimed)
+                stateMachine.tryEvent(.nextSkippingIdentityConfirmed)
             case .reset:
-                presentEncryptionResetScreen()
+                startEncryptionResetFlow()
             case .logout:
                 actionsSubject.send(.logout)
             }
@@ -263,19 +272,20 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
         presentCoordinator(coordinator)
     }
     
-    private func presentSessionVerificationScreen() async {
-        guard case let .success(sessionVerificationController) = await userSession.clientProxy.sessionVerificationControllerProxy() else {
+    private func presentSessionVerificationScreen() {
+        guard let sessionVerificationController = userSession.clientProxy.sessionVerificationController else {
             fatalError("The sessionVerificationController should aways be valid at this point")
         }
         
-        let parameters = SessionVerificationScreenCoordinatorParameters(sessionVerificationControllerProxy: sessionVerificationController)
+        let parameters = SessionVerificationScreenCoordinatorParameters(sessionVerificationControllerProxy: sessionVerificationController,
+                                                                        flow: .deviceInitiator,
+                                                                        appSettings: appSettings,
+                                                                        mediaProvider: userSession.mediaProvider)
         
         let coordinator = SessionVerificationScreenCoordinator(parameters: parameters)
         
         coordinator.actions
-            .sink { [weak self] action in
-                guard let self else { return }
-                
+            .sink { action in
                 switch action {
                 case .done:
                     break // Moving to next state is handled by the global session verification listener
@@ -294,16 +304,10 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
         let coordinator = SecureBackupRecoveryKeyScreenCoordinator(parameters: parameters)
         
         coordinator.actions
-            .sink { [weak self] action in
-                guard let self else { return }
-                
+            .sink { action in
                 switch action {
-                case .recoveryFixed:
+                case .complete:
                     break // Moving to next state is Handled by the global session verification listener
-                case .resetEncryption:
-                    presentEncryptionResetScreen()
-                default:
-                    MXLog.error("Unexpected recovery action: \(action)")
                 }
             }
             .store(in: &cancellables)
@@ -311,31 +315,31 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
         presentCoordinator(coordinator)
     }
     
-    private func presentEncryptionResetScreen() {
+    private func startEncryptionResetFlow() {
         let resetNavigationStackCoordinator = NavigationStackCoordinator()
-        
-        let coordinator = EncryptionResetScreenCoordinator(parameters: .init(clientProxy: userSession.clientProxy,
-                                                                             navigationStackCoordinator: resetNavigationStackCoordinator,
-                                                                             userIndicatorController: userIndicatorController))
+        let coordinator = EncryptionResetFlowCoordinator(parameters: .init(userSession: userSession,
+                                                                           userIndicatorController: userIndicatorController,
+                                                                           navigationStackCoordinator: resetNavigationStackCoordinator,
+                                                                           windowManger: windowManager))
         
         coordinator.actionsPublisher.sink { [weak self] action in
             guard let self else { return }
-            
             switch action {
-            case .cancel:
-                navigationStackCoordinator.setSheetCoordinator(nil)
-            case .requestOIDCAuthorisation(let url):
-                presentOIDCAuthorisationScreen(url: url)
-            case .resetFinished:
+            case .resetComplete:
                 // Moving to next state is handled by the global session verification listener
+                navigationStackCoordinator.setSheetCoordinator(nil)
+            case .cancel:
                 navigationStackCoordinator.setSheetCoordinator(nil)
             }
         }
         .store(in: &cancellables)
         
-        resetNavigationStackCoordinator.setRootCoordinator(coordinator)
+        encryptionResetFlowCoordinator = coordinator
+        coordinator.start()
         
-        navigationStackCoordinator.setSheetCoordinator(resetNavigationStackCoordinator)
+        navigationStackCoordinator.setSheetCoordinator(resetNavigationStackCoordinator) { [weak self] in
+            self?.encryptionResetFlowCoordinator = nil
+        }
     }
     
     private func presentIdentityConfirmedScreen() {
@@ -413,13 +417,5 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
         } else {
             navigationStackCoordinator.push(coordinator, dismissalCallback: dismissalCallback)
         }
-    }
-    
-    private var accountSettingsPresenter: OIDCAccountSettingsPresenter?
-    private func presentOIDCAuthorisationScreen(url: URL) {
-        // Note to anyone in the future if you come back here to make this open in Safari instead of a WAS.
-        // As of iOS 16, there is an issue on the simulator with accessing the cookie but it works on a device. 🤷‍♂️
-        accountSettingsPresenter = OIDCAccountSettingsPresenter(accountURL: url, presentationAnchor: windowManager.mainWindow)
-        accountSettingsPresenter?.start()
     }
 }

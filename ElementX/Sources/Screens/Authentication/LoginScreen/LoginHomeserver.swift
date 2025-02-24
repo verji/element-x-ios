@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -13,13 +13,21 @@ struct LoginHomeserver: Equatable {
     let address: String
     /// The types login supported by the homeserver.
     var loginMode: LoginMode
+    /// A temporary helper URL that can be used for registration.
+    var registrationHelperURL: URL?
     
     /// Creates a new homeserver value.
-    init(address: String, loginMode: LoginMode) {
+    init(address: String, loginMode: LoginMode, registrationHelperURL: URL? = nil) {
         let address = Self.sanitized(address).components(separatedBy: "://").last ?? address
         
         self.address = address
         self.loginMode = loginMode
+        self.registrationHelperURL = registrationHelperURL
+    }
+    
+    /// Whether or not the app is able to register on this homeserver.
+    var supportsRegistration: Bool {
+        loginMode == .oidc || (address == "matrix.org" && registrationHelperURL != nil)
     }
     
     /// Sanitizes a user entered homeserver address with the following rules
@@ -45,7 +53,7 @@ struct LoginHomeserver: Equatable {
 extension LoginHomeserver {
     /// A mock homeserver that is configured just like matrix.org.
     static var mockMatrixDotOrg: LoginHomeserver {
-        LoginHomeserver(address: "matrix.org", loginMode: .password)
+        LoginHomeserver(address: "matrix.org", loginMode: .password, registrationHelperURL: "https://develop.element.io/#/mobile_register")
     }
     
     /// A mock homeserver that supports login and registration via a password but has no SSO providers.

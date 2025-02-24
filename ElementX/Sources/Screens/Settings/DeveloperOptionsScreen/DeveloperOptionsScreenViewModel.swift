@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -17,9 +17,9 @@ class DeveloperOptionsScreenViewModel: DeveloperOptionsScreenViewModelType, Deve
         actionsSubject.eraseToAnyPublisher()
     }
     
-    init(developerOptions: DeveloperOptionsProtocol, elementCallBaseURL: URL, isUsingNativeSlidingSync: Bool) {
+    init(developerOptions: DeveloperOptionsProtocol, elementCallBaseURL: URL) {
         let bindings = DeveloperOptionsScreenViewStateBindings(developerOptions: developerOptions)
-        let state = DeveloperOptionsScreenViewState(elementCallBaseURL: elementCallBaseURL, isUsingNativeSlidingSync: isUsingNativeSlidingSync, bindings: bindings)
+        let state = DeveloperOptionsScreenViewState(elementCallBaseURL: elementCallBaseURL, bindings: bindings)
         
         super.init(initialViewState: state)
     }

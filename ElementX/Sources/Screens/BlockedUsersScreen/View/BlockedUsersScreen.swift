@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -32,9 +32,11 @@ struct BlockedUsersScreen: View {
         } else {
             Form {
                 ForEach(context.viewState.blockedUsers, id: \.self) { user in
-                    ListRow(label: .avatar(title: user.displayName ?? user.userID, icon: avatar(for: user)),
+                    ListRow(label: .avatar(title: user.displayName ?? user.userID,
+                                           description: user.displayName != nil ? user.userID : nil,
+                                           icon: avatar(for: user)),
                             details: .isWaiting(context.viewState.processingUserID == user.userID),
-                            kind: .button(action: { context.send(viewAction: .unblockUser(user)) }))
+                            kind: .button { context.send(viewAction: .unblockUser(user)) })
                 }
             }
         }
@@ -55,7 +57,7 @@ struct BlockedUsersScreen: View {
 struct BlockedUsersScreen_Previews: PreviewProvider, TestablePreview {
     static let viewModel = BlockedUsersScreenViewModel(hideProfiles: true,
                                                        clientProxy: ClientProxyMock(.init(userID: RoomMemberProxyMock.mockMe.userID)),
-                                                       mediaProvider: MockMediaProvider(),
+                                                       mediaProvider: MediaProviderMock(configuration: .init()),
                                                        userIndicatorController: UserIndicatorControllerMock())
     
     static var previews: some View {

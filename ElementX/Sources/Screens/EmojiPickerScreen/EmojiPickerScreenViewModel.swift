@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -36,6 +36,7 @@ class EmojiPickerScreenViewModel: EmojiPickerScreenViewModelType, EmojiPickerScr
                 state.categories = convert(emojiCategories: categories)
             }
         case let .emojiTapped(emoji: emoji):
+            emojiProvider.markEmojiAsFrequentlyUsed(emoji.value)
             actionsSubject.send(.emojiSelected(emoji: emoji.value))
         case .dismiss:
             actionsSubject.send(.dismiss)

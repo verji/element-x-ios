@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -21,20 +21,19 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
     var cancellables = Set<AnyCancellable>()
     
     override func setUp() {
+        AppSettings.resetAllSettings()
         cancellables.removeAll()
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test"))
         notificationSettingsProxyMock = NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration())
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: notificationSettingsProxyMock,
                                                attributedStringBuilder: AttributedStringBuilder(mentionBuilder: MentionBuilder()),
                                                appMediator: AppMediatorMock.default,
                                                appSettings: ServiceLocator.shared.settings)
-        
-        AppSettings.resetAllSettings()
     }
     
     func testLeaveRoomTappedWhenPublic() async throws {
@@ -42,7 +41,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isPublic: true, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -65,7 +64,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isPublic: false, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -89,7 +88,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isPublic: false, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -143,7 +142,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: true, isEncrypted: true, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -167,7 +166,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: true, isEncrypted: true, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -202,7 +201,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: true, isEncrypted: true, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: clientProxy,
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -236,7 +235,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: true, isEncrypted: true, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -271,7 +270,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: true, isEncrypted: true, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: clientProxy,
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -307,7 +306,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
                                                   canUserInvite: false))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -325,7 +324,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isPublic: true, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -362,7 +361,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         }
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -386,7 +385,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         }
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -410,7 +409,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         }
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -431,7 +430,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: false, isPublic: false, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -452,7 +451,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: true, isPublic: false, members: mockedMembers))
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: NotificationSettingsProxyMock(with: NotificationSettingsProxyMockConfiguration()),
@@ -471,7 +470,7 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         notificationSettingsProxyMock.getNotificationSettingsRoomIdIsEncryptedIsOneToOneThrowableError = NotificationSettingsError.Generic(msg: "error")
         viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
                                                clientProxy: ClientProxyMock(.init()),
-                                               mediaProvider: MockMediaProvider(),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
                                                analyticsService: ServiceLocator.shared.analytics,
                                                userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                notificationSettingsProxy: notificationSettingsProxyMock,
@@ -671,5 +670,100 @@ class RoomDetailsScreenViewModelTests: XCTestCase {
         } else {
             XCTFail("invalid state")
         }
+    }
+    
+    // MARK: - Knock Requests
+    
+    func testKnockRequestsCounter() async throws {
+        ServiceLocator.shared.settings.knockingEnabled = true
+        let mockedRequests: [KnockRequestProxyMock] = [.init(), .init()]
+        roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: false, isPublic: false, knockRequestsState: .loaded(mockedRequests), joinRule: .knock))
+        viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
+                                               clientProxy: ClientProxyMock(.init()),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
+                                               analyticsService: ServiceLocator.shared.analytics,
+                                               userIndicatorController: ServiceLocator.shared.userIndicatorController,
+                                               notificationSettingsProxy: notificationSettingsProxyMock,
+                                               attributedStringBuilder: AttributedStringBuilder(mentionBuilder: MentionBuilder()),
+                                               appMediator: AppMediatorMock.default,
+                                               appSettings: ServiceLocator.shared.settings)
+        
+        let deferred = deferFulfillment(context.$viewState) { state in
+            state.knockRequestsCount == 2 && state.canSeeKnockingRequests
+        }
+        try await deferred.fulfill()
+        
+        let deferredAction = deferFulfillment(viewModel.actions) { $0 == .displayKnockingRequests }
+        context.send(viewAction: .processTapRequestsToJoin)
+        try await deferredAction.fulfill()
+    }
+    
+    func testKnockRequestsCounterIsLoading() async throws {
+        ServiceLocator.shared.settings.knockingEnabled = true
+        roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: false, isPublic: false, knockRequestsState: .loading, joinRule: .knock))
+        viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
+                                               clientProxy: ClientProxyMock(.init()),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
+                                               analyticsService: ServiceLocator.shared.analytics,
+                                               userIndicatorController: ServiceLocator.shared.userIndicatorController,
+                                               notificationSettingsProxy: notificationSettingsProxyMock,
+                                               attributedStringBuilder: AttributedStringBuilder(mentionBuilder: MentionBuilder()),
+                                               appMediator: AppMediatorMock.default,
+                                               appSettings: ServiceLocator.shared.settings)
+        
+        let deferred = deferFulfillment(context.$viewState) { state in
+            state.knockRequestsCount == 0 && state.canSeeKnockingRequests
+        }
+        
+        try await deferred.fulfill()
+    }
+    
+    func testKnockRequestsCounterIsNotShownIfNoPermissions() async throws {
+        ServiceLocator.shared.settings.knockingEnabled = true
+        let mockedRequests: [KnockRequestProxyMock] = [.init(), .init()]
+        roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: false, isPublic: false, knockRequestsState: .loaded(mockedRequests), canUserInvite: false, joinRule: .knock))
+        viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
+                                               clientProxy: ClientProxyMock(.init()),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
+                                               analyticsService: ServiceLocator.shared.analytics,
+                                               userIndicatorController: ServiceLocator.shared.userIndicatorController,
+                                               notificationSettingsProxy: notificationSettingsProxyMock,
+                                               attributedStringBuilder: AttributedStringBuilder(mentionBuilder: MentionBuilder()),
+                                               appMediator: AppMediatorMock.default,
+                                               appSettings: ServiceLocator.shared.settings)
+        
+        let deferred = deferFulfillment(context.$viewState) { state in
+            state.knockRequestsCount == 2 &&
+                state.dmRecipient == nil &&
+                !state.canSeeKnockingRequests &&
+                !state.canInviteUsers
+        }
+        
+        try await deferred.fulfill()
+    }
+    
+    func testKnockRequestsCounterIsNotShownIfDM() async throws {
+        ServiceLocator.shared.settings.knockingEnabled = true
+        let mockedRequests: [KnockRequestProxyMock] = [.init(), .init()]
+        let mockedMembers: [RoomMemberProxyMock] = [.mockMe, .mockAlice]
+        roomProxyMock = JoinedRoomProxyMock(.init(name: "Test", isDirect: true, isPublic: false, members: mockedMembers, knockRequestsState: .loaded(mockedRequests), joinRule: .knock))
+        viewModel = RoomDetailsScreenViewModel(roomProxy: roomProxyMock,
+                                               clientProxy: ClientProxyMock(.init()),
+                                               mediaProvider: MediaProviderMock(configuration: .init()),
+                                               analyticsService: ServiceLocator.shared.analytics,
+                                               userIndicatorController: ServiceLocator.shared.userIndicatorController,
+                                               notificationSettingsProxy: notificationSettingsProxyMock,
+                                               attributedStringBuilder: AttributedStringBuilder(mentionBuilder: MentionBuilder()),
+                                               appMediator: AppMediatorMock.default,
+                                               appSettings: ServiceLocator.shared.settings)
+        
+        let deferred = deferFulfillment(context.$viewState) { state in
+            state.knockRequestsCount == 2 &&
+                !state.canSeeKnockingRequests &&
+                state.dmRecipient != nil &&
+                state.canInviteUsers
+        }
+        
+        try await deferred.fulfill()
     }
 }

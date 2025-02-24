@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -95,9 +95,7 @@ struct LongPressWithFeedback_Previews: PreviewProvider, TestablePreview {
         
         func mockBubble(_ body: String) -> some View {
             Text(body)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(Color.compound._bgBubbleOutgoing, in: RoundedRectangle(cornerRadius: 12))
+                .bubbleBackground()
                 .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12))
                 .onTapGesture { /* Fix long press gesture blocking the scroll view */ }
         }

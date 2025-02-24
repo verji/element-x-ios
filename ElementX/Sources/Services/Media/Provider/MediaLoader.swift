@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -34,8 +34,12 @@ actor MediaLoader: MediaLoaderProtocol {
         }
     }
     
-    func loadMediaFileForSource(_ source: MediaSourceProxy, body: String?) async throws -> MediaFileHandleProxy {
-        let result = try await client.getMediaFile(mediaSource: source.underlyingSource, body: body, mimeType: source.mimeType ?? "application/octet-stream", useCache: true, tempDir: nil)
+    func loadMediaFileForSource(_ source: MediaSourceProxy, filename: String?) async throws -> MediaFileHandleProxy {
+        let result = try await client.getMediaFile(mediaSource: source.underlyingSource,
+                                                   filename: filename,
+                                                   mimeType: source.mimeType ?? "application/octet-stream",
+                                                   useCache: true,
+                                                   tempDir: nil)
         
         return MediaFileHandleProxy(handle: result)
     }

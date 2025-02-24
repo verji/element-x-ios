@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -44,14 +44,16 @@ struct ReadReceiptsSummaryView_Previews: PreviewProvider, TestablePreview {
         ]
         let roomProxyMock = JoinedRoomProxyMock(.init(name: "Room", members: members))
         let mock = TimelineViewModel(roomProxy: roomProxyMock,
-                                     timelineController: MockRoomTimelineController(),
-                                     mediaProvider: MockMediaProvider(),
+                                     timelineController: MockTimelineController(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      mediaPlayerProvider: MediaPlayerProviderMock(),
                                      voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                      userIndicatorController: UserIndicatorControllerMock(),
                                      appMediator: AppMediatorMock.default,
                                      appSettings: ServiceLocator.shared.settings,
-                                     analyticsService: ServiceLocator.shared.analytics)
+                                     analyticsService: ServiceLocator.shared.analytics,
+                                     emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                     timelineControllerFactory: TimelineControllerFactoryMock(.init()))
         return mock
     }()
     

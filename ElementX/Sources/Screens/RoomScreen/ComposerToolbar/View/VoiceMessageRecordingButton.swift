@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -14,6 +14,8 @@ enum VoiceMessageRecordingButtonMode {
 }
 
 struct VoiceMessageRecordingButton: View {
+    @Environment(\.isEnabled) private var isEnabled
+    
     let mode: VoiceMessageRecordingButtonMode
     var startRecording: (() -> Void)?
     var stopRecording: (() -> Void)?
@@ -32,18 +34,17 @@ struct VoiceMessageRecordingButton: View {
         } label: {
             switch mode {
             case .idle:
-                CompoundIcon(\.micOn, size: .medium, relativeTo: .title)
-                    .foregroundColor(.compound.iconSecondary)
-                    .scaledPadding(10, relativeTo: .title)
-            case .recording:
-                CompoundIcon(asset: Asset.Images.stopRecording, size: .medium, relativeTo: .title)
-                    .foregroundColor(.compound.iconOnSolidPrimary)
-                    .scaledPadding(6, relativeTo: .title)
-                    .background(
-                        Circle()
-                            .foregroundColor(.compound.bgActionPrimaryRest)
+                CompoundIcon(\.micOn, size: .medium, relativeTo: .compound.headingLG)
+                    .foregroundColor(
+                        isEnabled ? .compound.iconSecondary : .compound.iconDisabled
                     )
-                    .scaledPadding(4, relativeTo: .title)
+                    .scaledPadding(10, relativeTo: .compound.headingLG)
+            case .recording:
+                CompoundIcon(asset: Asset.Images.stopRecording, size: .medium, relativeTo: .compound.headingLG)
+                    .foregroundColor(.compound.iconOnSolidPrimary)
+                    .scaledPadding(6, relativeTo: .compound.headingLG)
+                    .background(.compound.bgActionPrimaryRest, in: Circle())
+                    .scaledPadding(4, relativeTo: .compound.headingLG)
             }
         }
         .buttonStyle(VoiceMessageRecordingButtonStyle())

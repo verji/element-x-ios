@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -31,6 +31,11 @@ struct StartChatScreen: View {
                           disablesInteractiveDismiss: true)
         .compoundSearchField()
         .alert(item: $context.alertInfo)
+        .sheet(item: $context.selectedUserToInvite) { user in
+            SendInviteConfirmationView(userToInvite: user, mediaProvider: context.mediaProvider) {
+                context.send(viewAction: .createDM(user: user))
+            }
+        }
     }
 
     // MARK: - Private

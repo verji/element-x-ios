@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -42,11 +42,11 @@ struct Application: App {
                         openURLInSystemBrowser($0)
                     }
                 }
-                .onContinueUserActivity("INStartVideoCallIntent", perform: { userActivity in
+                .onContinueUserActivity("INStartVideoCallIntent") { userActivity in
                     // `INStartVideoCallIntent` is to be replaced with `INStartCallIntent`
                     // but calls from Recents still send it ¯\_(ツ)_/¯
                     appCoordinator.handleUserActivity(userActivity)
-                })
+                }
                 .task {
                     appCoordinator.start()
                 }

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -16,6 +16,7 @@ enum MediaProviderError: Error {
     case cancelled
 }
 
+// sourcery: AutoMockable
 protocol MediaProviderProtocol {
     func imageFromSource(_ source: MediaSourceProxy?, size: CGSize?) -> UIImage?
     func loadImageFromSource(_ source: MediaSourceProxy, size: CGSize?) async -> Result<UIImage, MediaProviderError>
@@ -24,7 +25,7 @@ protocol MediaProviderProtocol {
     
     func loadThumbnailForSource(source: MediaSourceProxy, size: CGSize) async -> Result<Data, MediaProviderError>
     
-    func loadFileFromSource(_ source: MediaSourceProxy, body: String?) async -> Result<MediaFileHandleProxy, MediaProviderError>
+    func loadFileFromSource(_ source: MediaSourceProxy, filename: String?) async -> Result<MediaFileHandleProxy, MediaProviderError>
 }
 
 extension MediaProviderProtocol {
@@ -37,6 +38,6 @@ extension MediaProviderProtocol {
     }
     
     func loadFileFromSource(_ source: MediaSourceProxy) async -> Result<MediaFileHandleProxy, MediaProviderError> {
-        await loadFileFromSource(source, body: nil)
+        await loadFileFromSource(source, filename: nil)
     }
 }

@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -63,10 +63,13 @@ struct PinnedItemsBannerView: View {
     
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(state.bannerIndicatorDescription)
-                .font(.compound.bodySM)
-                .foregroundColor(.compound.textActionAccent)
-                .lineLimit(1)
+            // Only the display the indicator description for more than 1 pinned item
+            if state.count > 1 {
+                Text(state.bannerIndicatorDescription)
+                    .font(.compound.bodySM)
+                    .foregroundColor(.compound.textActionAccent)
+                    .lineLimit(1)
+            }
             Text(state.displayedMessage)
                 .font(.compound.bodyMD)
                 .foregroundColor(.compound.textPrimary)

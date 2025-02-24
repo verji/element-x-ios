@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import AVKit
@@ -26,7 +26,6 @@ struct CallScreen: View {
                             Image(systemSymbol: .chevronBackward)
                                 .fontWeight(.semibold)
                         }
-                        // .padding(.leading, -8) // Fixes the button alignment, but harder to tap.
                     }
                 }
         }
@@ -89,7 +88,7 @@ private struct CallView: UIViewRepresentable {
             
             super.init()
             
-            DispatchQueue.main.async { // Avoid `Publishing changes from within view update warnings`
+            DispatchQueue.main.async { // Avoid `Publishing changes from within view update` warnings
                 viewModelContext.javaScriptEvaluator = self.evaluateJavaScript
                 viewModelContext.requestPictureInPictureHandler = self.requestPictureInPicture
             }
@@ -128,6 +127,7 @@ private struct CallView: UIViewRepresentable {
                                                                                                    contentViewController: pictureInPictureViewController))
                 pictureInPictureController.delegate = self
                 self.pictureInPictureController = pictureInPictureController
+                viewModelContext.send(viewAction: .pictureInPictureIsAvailable(pictureInPictureController))
             }
         }
         
@@ -152,11 +152,8 @@ private struct CallView: UIViewRepresentable {
             }
         }
         
-        nonisolated func userContentController(_ userContentController: WKUserContentController,
-                                               didReceive message: WKScriptMessage) {
-            Task { @MainActor [weak self] in
-                self?.viewModelContext?.javaScriptMessageHandler?(message.body)
-            }
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            viewModelContext?.javaScriptMessageHandler?(message.body)
         }
         
         // MARK: - WKUIDelegate
@@ -191,15 +188,13 @@ private struct CallView: UIViewRepresentable {
             return .cancel
         }
         
-        nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            Task { @MainActor in
-                viewModelContext?.send(viewAction: .urlChanged(webView.url))
-            }
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            viewModelContext?.send(viewAction: .urlChanged(webView.url))
         }
         
         // MARK: - Picture in Picture
         
-        func requestPictureInPicture() async -> Result<AVPictureInPictureController, CallScreenError> {
+        func requestPictureInPicture() async -> Result<Void, CallScreenError> {
             guard let pictureInPictureController,
                   pictureInPictureController.isPictureInPicturePossible,
                   case .success(true) = await webViewCanEnterPictureInPicture() else {
@@ -207,7 +202,7 @@ private struct CallView: UIViewRepresentable {
             }
             
             pictureInPictureController.startPictureInPicture()
-            return .success(pictureInPictureController)
+            return .success(())
         }
         
         func stopPictureInPicture() {
@@ -219,6 +214,18 @@ private struct CallView: UIViewRepresentable {
                 // We move the view via the delegate so it works when you background the app without calling requestPictureInPicture
                 pictureInPictureViewController.view.addMatchedSubview(webView)
                 _ = try? await evaluateJavaScript("controls.enablePip()")
+            }
+        }
+        
+        nonisolated func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+            Task { @MainActor in
+                // Double check that the controller is definitely showing a page that supports picture in picture.
+                // This is necessary as it doesn't get checked when backgrounding the app or tapping a notification.
+                guard case .success(true) = await webViewCanEnterPictureInPicture() else {
+                    MXLog.error("Picture in picture started on a webpage that doesn't support it. Ending the call.")
+                    viewModelContext?.send(viewAction: .endCall)
+                    return
+                }
             }
         }
         
@@ -259,8 +266,7 @@ private struct CallView: UIViewRepresentable {
         
         // MARK: - WKScriptMessageHandler
         
-        nonisolated func userContentController(_ userContentController: WKUserContentController,
-                                               didReceive message: WKScriptMessage) {
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             coordinator?.userContentController(userContentController, didReceive: message)
         }
     }
@@ -290,7 +296,8 @@ struct CallScreen_Previews: PreviewProvider {
                                                         clientID: "io.element.elementx",
                                                         elementCallBaseURL: "https://call.element.io",
                                                         elementCallBaseURLOverride: nil,
-                                                        colorScheme: .light),
+                                                        colorScheme: .light,
+                                                        notifyOtherParticipants: false),
                                    allowPictureInPicture: false,
                                    appHooks: AppHooks())
     }()

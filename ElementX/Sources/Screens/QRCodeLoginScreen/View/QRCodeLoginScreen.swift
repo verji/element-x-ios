@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -41,12 +41,19 @@ struct QRCodeLoginScreen: View {
         FullscreenDialog {
             VStack(alignment: .leading, spacing: 40) {
                 VStack(spacing: 16) {
-                    HeroImage(icon: \.computer, style: .subtle)
+                    BigIcon(icon: \.computer, style: .default)
                     
-                    Text(L10n.screenQrCodeLoginInitialStateTitle(InfoPlistReader.main.productionAppName))
-                        .foregroundColor(.compound.textPrimary)
-                        .font(.compound.headingMDBold)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 8) {
+                        Text(L10n.screenQrCodeLoginInitialStateTitle(InfoPlistReader.main.productionAppName))
+                            .foregroundColor(.compound.textPrimary)
+                            .font(.compound.headingMDBold)
+                            .multilineTextAlignment(.center)
+                        
+                        Text(L10n.screenQrCodeLoginInitialStateSubtitle)
+                            .font(.compound.bodyMD)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.compound.textSecondary)
+                    }
                 }
                 .padding(.horizontal, 24)
                 
@@ -94,7 +101,7 @@ struct QRCodeLoginScreen: View {
         VStack(spacing: 16) {
             switch state {
             case .deviceCode:
-                HeroImage(icon: \.computer, style: .subtle)
+                BigIcon(icon: \.computer, style: .default)
                 
                 VStack(spacing: 8) {
                     Text(L10n.screenQrCodeLoginDeviceCodeTitle)
@@ -108,7 +115,7 @@ struct QRCodeLoginScreen: View {
                         .multilineTextAlignment(.center)
                 }
             case .verificationCode:
-                HeroImage(icon: \.lock, style: .subtle)
+                BigIcon(icon: \.lock, style: .default)
                 
                 VStack(spacing: 8) {
                     Text(L10n.screenQrCodeLoginVerifyCodeTitle)
@@ -129,7 +136,7 @@ struct QRCodeLoginScreen: View {
         FullscreenDialog {
             VStack(spacing: 40) {
                 VStack(spacing: 16) {
-                    HeroImage(icon: \.takePhotoSolid, style: .subtle)
+                    BigIcon(icon: \.takePhotoSolid, style: .default)
                     
                     Text(L10n.screenQrCodeLoginScanningStateTitle)
                         .foregroundColor(.compound.textPrimary)
@@ -171,7 +178,7 @@ struct QRCodeLoginScreen: View {
                     
                     VStack(spacing: 4) {
                         Label(L10n.screenQrCodeLoginInvalidScanStateSubtitle,
-                              icon: \.error,
+                              icon: \.errorSolid,
                               iconSize: .medium,
                               relativeTo: .compound.bodyMDSemibold)
                             .labelStyle(.custom(spacing: 10))
@@ -193,7 +200,7 @@ struct QRCodeLoginScreen: View {
                     
                     VStack(spacing: 4) {
                         Label(L10n.screenQrCodeLoginDeviceNotSignedInScanStateSubtitle,
-                              icon: \.error,
+                              icon: \.errorSolid,
                               iconSize: .medium,
                               relativeTo: .compound.bodyMDSemibold)
                             .labelStyle(.custom(spacing: 10))
@@ -249,7 +256,7 @@ struct QRCodeLoginScreen: View {
         switch errorState {
         case .noCameraPermission:
             VStack(spacing: 16) {
-                HeroImage(icon: \.takePhotoSolid, style: .subtle)
+                BigIcon(icon: \.takePhotoSolid, style: .default)
                 
                 VStack(spacing: 8) {
                     Text(L10n.screenQrCodeLoginNoCameraPermissionStateTitle)
@@ -266,7 +273,7 @@ struct QRCodeLoginScreen: View {
         case .connectionNotSecure:
             VStack(spacing: 40) {
                 VStack(spacing: 16) {
-                    HeroImage(icon: \.error, style: .critical)
+                    BigIcon(icon: \.errorSolid, style: .alert)
                     
                     VStack(spacing: 8) {
                         Text(L10n.screenQrCodeLoginConnectionNoteSecureStateTitle)
@@ -332,7 +339,7 @@ struct QRCodeLoginScreen: View {
         }
         
         VStack(spacing: 16) {
-            HeroImage(icon: \.error, style: .critical)
+            BigIcon(icon: \.errorSolid, style: .alert)
             
             VStack(spacing: 8) {
                 Text(title)

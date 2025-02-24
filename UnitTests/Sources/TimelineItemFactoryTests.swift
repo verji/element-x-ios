@@ -1,11 +1,13 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 @testable import ElementX
+import MatrixRustSDK
+
 import XCTest
 
 @MainActor
@@ -18,19 +20,9 @@ class TimelineItemFactoryTests: XCTestCase {
                                               attributedStringBuilder: AttributedStringBuilder(mentionBuilder: MentionBuilder()),
                                               stateEventStringBuilder: RoomStateEventStringBuilder(userID: ownUserID))
         
-        let eventTimelineItem = EventTimelineItemSDKMock()
-        eventTimelineItem.isOwnReturnValue = true
-        eventTimelineItem.timestampReturnValue = 0
-        eventTimelineItem.isEditableReturnValue = false
-        eventTimelineItem.canBeRepliedToReturnValue = false
-        eventTimelineItem.senderReturnValue = senderUserID
-        eventTimelineItem.senderProfileReturnValue = .pending
+        let eventTimelineItem = EventTimelineItem.mockCallInvite(sender: senderUserID)
         
-        let timelineItemContent = TimelineItemContentSDKMock()
-        timelineItemContent.kindReturnValue = .callInvite
-        eventTimelineItem.contentReturnValue = timelineItemContent
-        
-        let eventTimelineItemProxy = EventTimelineItemProxy(item: eventTimelineItem, id: "0")
+        let eventTimelineItemProxy = EventTimelineItemProxy(item: eventTimelineItem, uniqueID: .init("0"))
         
         let item = factory.buildTimelineItem(for: eventTimelineItemProxy, isDM: false)
         

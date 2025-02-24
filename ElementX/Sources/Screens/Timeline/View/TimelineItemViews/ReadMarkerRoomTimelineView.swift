@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -29,13 +29,13 @@ struct ReadMarkerRoomTimelineView: View {
 struct ReadMarkerRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static let viewModel = TimelineViewModel.mock
 
-    static let item = ReadMarkerRoomTimelineItem(id: .init(timelineID: .init(UUID().uuidString)))
+    static let item = ReadMarkerRoomTimelineItem(id: .randomVirtual)
 
     static var previews: some View {
         VStack(alignment: .leading, spacing: 0) {
-            RoomTimelineItemView(viewState: .init(type: .separator(.init(id: .init(timelineID: "Separator"), text: "Today")), groupStyle: .single))
-            RoomTimelineItemView(viewState: .init(type: .text(.init(id: .init(timelineID: ""),
-                                                                    timestamp: "",
+            RoomTimelineItemView(viewState: .init(type: .separator(.init(id: .virtual(uniqueID: .init("Separator")), timestamp: .mock)), groupStyle: .single))
+            RoomTimelineItemView(viewState: .init(type: .text(.init(id: .randomEvent,
+                                                                    timestamp: .mock,
                                                                     isOutgoing: true,
                                                                     isEditable: false,
                                                                     canBeRepliedTo: true,
@@ -45,9 +45,9 @@ struct ReadMarkerRoomTimelineView_Previews: PreviewProvider, TestablePreview {
 
             ReadMarkerRoomTimelineView(timelineItem: item)
 
-            RoomTimelineItemView(viewState: .init(type: .separator(.init(id: .init(timelineID: "Separator"), text: "Today")), groupStyle: .single))
-            RoomTimelineItemView(viewState: .init(type: .text(.init(id: .init(timelineID: ""),
-                                                                    timestamp: "",
+            RoomTimelineItemView(viewState: .init(type: .separator(.init(id: .virtual(uniqueID: .init("Separator")), timestamp: .mock)), groupStyle: .single))
+            RoomTimelineItemView(viewState: .init(type: .text(.init(id: .randomEvent,
+                                                                    timestamp: .mock,
                                                                     isOutgoing: false,
                                                                     isEditable: false,
                                                                     canBeRepliedTo: true,

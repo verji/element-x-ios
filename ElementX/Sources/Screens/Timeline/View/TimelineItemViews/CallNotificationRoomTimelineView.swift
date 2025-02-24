@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -10,7 +10,7 @@ import Foundation
 import SwiftUI
 
 struct CallNotificationRoomTimelineView: View {
-    @EnvironmentObject private var context: TimelineViewModel.Context
+    @Environment(\.timelineContext) private var context
     
     let timelineItem: CallNotificationRoomTimelineItem
     
@@ -20,7 +20,7 @@ struct CallNotificationRoomTimelineView: View {
                                 name: timelineItem.sender.displayName ?? timelineItem.sender.id,
                                 contentID: timelineItem.sender.id,
                                 avatarSize: .user(on: .timeline),
-                                mediaProvider: context.mediaProvider)
+                                mediaProvider: context?.mediaProvider)
                 .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 0) {
@@ -39,7 +39,7 @@ struct CallNotificationRoomTimelineView: View {
             
             Spacer()
             
-            Text(timelineItem.timestamp)
+            Text(timelineItem.timestamp.formattedTime())
                 .font(.compound.bodyXS)
                 .foregroundColor(.compound.textSecondary)
         }
@@ -60,8 +60,8 @@ struct CallNotificationRoomTimelineView_Previews: PreviewProvider, TestablePrevi
     }
     
     static var body: some View {
-        CallNotificationRoomTimelineView(timelineItem: .init(id: .random,
-                                                             timestamp: "Now",
+        CallNotificationRoomTimelineView(timelineItem: .init(id: .randomEvent,
+                                                             timestamp: .mock,
                                                              isEditable: false,
                                                              canBeRepliedTo: false,
                                                              sender: .init(id: "Bob")))

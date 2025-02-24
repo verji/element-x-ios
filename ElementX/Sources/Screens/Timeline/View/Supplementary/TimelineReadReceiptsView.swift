@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -11,25 +11,22 @@ struct TimelineReadReceiptsView: View {
     let displayNumber = 3
     let timelineItem: EventBasedTimelineItemProtocol
     @EnvironmentObject private var context: TimelineViewModel.Context
+    
+    var avatars: [StackedAvatarInfo] {
+        timelineItem.properties.orderedReadReceipts.prefix(displayNumber).map { receipt in
+            StackedAvatarInfo(url: context.viewState.members[receipt.userID]?.avatarURL,
+                              name: context.viewState.members[receipt.userID]?.displayName,
+                              contentID: receipt.userID)
+        }
+    }
 
     var body: some View {
         HStack(spacing: 2) {
-            HStack(spacing: -4) {
-                let receiptsToDisplay = timelineItem.properties.orderedReadReceipts.prefix(displayNumber)
-                ForEach(0..<receiptsToDisplay.count, id: \.self) { index in
-                    let receipt = receiptsToDisplay[index]
-                    LoadableAvatarImage(url: context.viewState.members[receipt.userID]?.avatarURL,
-                                        name: context.viewState.members[receipt.userID]?.displayName,
-                                        contentID: receipt.userID,
-                                        avatarSize: .user(on: .readReceipt),
-                                        mediaProvider: context.mediaProvider)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: .infinity)
-                                .stroke(Color.compound.bgCanvasDefault, lineWidth: 1)
-                        }
-                        .zIndex(Double(displayNumber - index))
-                }
-            }
+            StackedAvatarsView(overlap: 6,
+                               lineWidth: 1,
+                               avatars: avatars, avatarSize: .user(on: .readReceipt),
+                               mediaProvider: context.mediaProvider)
+                .padding(-1)
             if timelineItem.properties.orderedReadReceipts.count > displayNumber {
                 Text("+\(remaining)")
                     .font(.compound.bodySM)
@@ -82,14 +79,16 @@ struct TimelineReadReceiptsView_Previews: PreviewProvider, TestablePreview {
     ]
 
     static let viewModel = TimelineViewModel(roomProxy: JoinedRoomProxyMock(.init(name: "Test", members: members)),
-                                             timelineController: MockRoomTimelineController(),
-                                             mediaProvider: MockMediaProvider(),
+                                             timelineController: MockTimelineController(),
+                                             mediaProvider: MediaProviderMock(configuration: .init()),
                                              mediaPlayerProvider: MediaPlayerProviderMock(),
                                              voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                              userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                              appMediator: AppMediatorMock.default,
                                              appSettings: ServiceLocator.shared.settings,
-                                             analyticsService: ServiceLocator.shared.analytics)
+                                             analyticsService: ServiceLocator.shared.analytics,
+                                             emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                             timelineControllerFactory: TimelineControllerFactoryMock(.init()))
 
     static let singleReceipt = [ReadReceipt(userID: RoomMemberProxyMock.mockAlice.userID, formattedTimestamp: "Now")]
     static let doubleReceipt = [ReadReceipt(userID: RoomMemberProxyMock.mockAlice.userID, formattedTimestamp: "Now"),
@@ -103,8 +102,8 @@ struct TimelineReadReceiptsView_Previews: PreviewProvider, TestablePreview {
                                    ReadReceipt(userID: RoomMemberProxyMock.mockDan.userID, formattedTimestamp: "Way, way before")]
 
     static func mockTimelineItem(with receipts: [ReadReceipt]) -> TextRoomTimelineItem {
-        TextRoomTimelineItem(id: .random,
-                             timestamp: "Now",
+        TextRoomTimelineItem(id: .randomEvent,
+                             timestamp: .mock,
                              isOutgoing: true,
                              isEditable: false,
                              canBeRepliedTo: true,

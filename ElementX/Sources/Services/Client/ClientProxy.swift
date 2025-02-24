@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -19,7 +19,7 @@ class ClientProxy: ClientProxyProtocol {
     
     private let mediaLoader: MediaLoaderProtocol
     private let clientQueue: DispatchQueue
-        
+    
     private var roomListService: RoomListService?
     // periphery: ignore - only for retain
     private var roomListStateUpdateTaskHandle: TaskHandle?
@@ -50,6 +50,8 @@ class ClientProxy: ClientProxyProtocol {
 
     let secureBackupController: SecureBackupControllerProtocol
     
+    private(set) var sessionVerificationController: SessionVerificationControllerProxyProtocol?
+    
     private static var roomCreationPowerLevelOverrides: PowerLevels {
         .init(usersDefault: nil,
               eventsDefault: nil,
@@ -58,6 +60,22 @@ class ClientProxy: ClientProxyProtocol {
               kick: nil,
               redact: nil,
               invite: nil,
+              notifications: nil,
+              users: [:],
+              events: [
+                  "m.call.member": Int32(0),
+                  "org.matrix.msc3401.call.member": Int32(0)
+              ])
+    }
+    
+    private static var knockingRoomCreationPowerLevelOverrides: PowerLevels {
+        .init(usersDefault: nil,
+              eventsDefault: nil,
+              stateDefault: nil,
+              ban: nil,
+              kick: nil,
+              redact: nil,
+              invite: Int32(50),
               notifications: nil,
               users: [:],
               events: [
@@ -82,8 +100,6 @@ class ClientProxy: ClientProxyProtocol {
         ignoredUsersSubject
             .asCurrentValuePublisher()
     }
-    
-    private let roomListServiceStateSubject = CurrentValueSubject<RoomListServiceState, Never>(.initial)
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -114,9 +130,12 @@ class ClientProxy: ClientProxyProtocol {
         verificationStateSubject.asCurrentValuePublisher()
     }
     
+    var roomsToAwait: Set<String> = []
+    
     private let sendQueueStatusSubject = CurrentValueSubject<Bool, Never>(false)
     
     init(client: ClientProtocol,
+         needsSlidingSyncMigration: Bool,
          networkMonitor: NetworkMonitorProtocol,
          appSettings: AppSettings) async {
         self.client = client
@@ -130,6 +149,8 @@ class ClientProxy: ClientProxyProtocol {
         notificationSettings = NotificationSettingsProxy(notificationSettings: client.getNotificationSettings())
         
         secureBackupController = SecureBackupController(encryption: client.encryption())
+        
+        self.needsSlidingSyncMigration = needsSlidingSyncMigration
 
         delegateHandle = client.setDelegate(delegate: ClientDelegateWrapper { [weak self] isSoftLogout in
             self?.hasEncounteredAuthError = true
@@ -154,10 +175,10 @@ class ClientProxy: ClientProxyProtocol {
             self?.ignoredUsersSubject.send(ignoredUsers)
         })
         
-        updateVerificationState(client.encryption().verificationState())
+        await updateVerificationState(client.encryption().verificationState())
         
         verificationStateListenerTaskHandle = client.encryption().verificationStateListener(listener: VerificationStateListenerProxy { [weak self] verificationState in
-            self?.updateVerificationState(verificationState)
+            Task { await self?.updateVerificationState(verificationState) }
         })
         
         sendQueueListenerTaskHandle = client.subscribeToSendQueueStatus(listener: SendQueueRoomErrorListenerProxy { [weak self] roomID, error in
@@ -203,14 +224,13 @@ class ClientProxy: ClientProxyProtocol {
         client.homeserver()
     }
     
+    let needsSlidingSyncMigration: Bool
     var slidingSyncVersion: SlidingSyncVersion {
         client.slidingSyncVersion()
     }
     
-    var availableSlidingSyncVersions: [SlidingSyncVersion] {
-        get async {
-            await client.availableSlidingSyncVersions()
-        }
+    var canDeactivateAccount: Bool {
+        client.canDeactivateAccount()
     }
     
     var userIDServerName: String? {
@@ -241,6 +261,11 @@ class ClientProxy: ClientProxyProtocol {
     }
 
     func startSync() {
+        guard !needsSlidingSyncMigration else {
+            MXLog.warning("Ignoring request, this client needs to be migrated to native sliding sync.")
+            return
+        }
+        
         guard !hasEncounteredAuthError else {
             MXLog.warning("Ignoring request, this client has an unknown token.")
             return
@@ -283,7 +308,7 @@ class ClientProxy: ClientProxyProtocol {
         stopSync(completion: nil)
     }
     
-    private func stopSync(completion: (() -> Void)?) {
+    func stopSync(completion: (() -> Void)?) {
         MXLog.info("Stopping sync")
         
         if restartTask != nil {
@@ -291,40 +316,28 @@ class ClientProxy: ClientProxyProtocol {
             restartTask = nil
         }
         
+        guard let syncService else {
+            MXLog.warning("No sync service to stop.")
+            completion?()
+            return
+        }
+        
         // Capture the sync service strongly as this method is called on deinit and so the
         // existence of self when the Task executes is questionable and would sometimes crash.
+        // Note: This isn't strictly necessary now given the unwrap above, but leaving the code as
+        // documentation. SE-0371 will allow us to fix this by using an async deinit.
         Task { [syncService] in
-            do {
-                defer {
-                    completion?()
-                }
-                
-                try await syncService?.stop()
-            } catch {
-                MXLog.error("Failed stopping the sync service with error: \(error)")
+            defer {
+                completion?()
             }
+            
+            await syncService.stop()
+            MXLog.info("Sync stopped")
         }
     }
     
     func accountURL(action: AccountManagementAction) async -> URL? {
         try? await client.accountUrl(action: action).flatMap(URL.init(string:))
-    }
-    
-    func createDirectRoomIfNeeded(with userID: String, expectedRoomName: String?) async -> Result<(roomID: String, isNewRoom: Bool), ClientProxyError> {
-        let currentDirectRoom = await directRoomForUserID(userID)
-        switch currentDirectRoom {
-        case .success(.some(let roomID)):
-            return .success((roomID: roomID, isNewRoom: false))
-        case .success(.none):
-            switch await createDirectRoom(with: userID, expectedRoomName: expectedRoomName) {
-            case .success(let roomID):
-                return .success((roomID: roomID, isNewRoom: true))
-            case .failure(let error):
-                return .failure(.sdkError(error))
-            }
-        case .failure(let error):
-            return .failure(.sdkError(error))
-        }
     }
     
     func directRoomForUserID(_ userID: String) async -> Result<String?, ClientProxyError> {
@@ -350,15 +363,24 @@ class ClientProxy: ClientProxyProtocol {
                                                   invite: [userID],
                                                   avatar: nil,
                                                   powerLevelContentOverride: Self.roomCreationPowerLevelOverrides)
-            let result = try await client.createRoom(request: parameters)
-            return await waitForRoomSummary(with: .success(result), name: expectedRoomName)
+            let roomID = try await client.createRoom(request: parameters)
+            
+            await waitForRoomToSync(roomID: roomID)
+            
+            return .success(roomID)
         } catch {
             MXLog.error("Failed creating direct room for userID: \(userID) with error: \(error)")
             return .failure(.sdkError(error))
         }
     }
     
-    func createRoom(name: String, topic: String?, isRoomPrivate: Bool, userIDs: [String], avatarURL: URL?) async -> Result<String, ClientProxyError> {
+    func createRoom(name: String,
+                    topic: String?,
+                    isRoomPrivate: Bool,
+                    isKnockingOnly: Bool,
+                    userIDs: [String],
+                    avatarURL: URL?,
+                    aliasLocalPart: String?) async -> Result<String, ClientProxyError> {
         do {
             let parameters = CreateRoomParameters(name: name,
                                                   topic: topic,
@@ -368,9 +390,15 @@ class ClientProxy: ClientProxyProtocol {
                                                   preset: isRoomPrivate ? .privateChat : .publicChat,
                                                   invite: userIDs,
                                                   avatar: avatarURL?.absoluteString,
-                                                  powerLevelContentOverride: Self.roomCreationPowerLevelOverrides)
+                                                  powerLevelContentOverride: isKnockingOnly ? Self.knockingRoomCreationPowerLevelOverrides : Self.roomCreationPowerLevelOverrides,
+                                                  joinRuleOverride: isKnockingOnly ? .knock : nil,
+                                                  // This is an FFI naming mistake, what is required is the `aliasLocalPart` not the whole alias
+                                                  canonicalAlias: aliasLocalPart)
             let roomID = try await client.createRoom(request: parameters)
-            return await waitForRoomSummary(with: .success(roomID), name: name)
+            
+            await waitForRoomToSync(roomID: roomID)
+            
+            return .success(roomID)
         } catch {
             MXLog.error("Failed creating room with error: \(error)")
             return .failure(.sdkError(error))
@@ -380,11 +408,13 @@ class ClientProxy: ClientProxyProtocol {
     func joinRoom(_ roomID: String, via: [String]) async -> Result<Void, ClientProxyError> {
         do {
             let _ = try await client.joinRoomByIdOrAlias(roomIdOrAlias: roomID, serverNames: via)
-            
-            // Wait for the room to appear in the room lists to avoid issues downstream
-            let _ = await waitForRoomSummary(with: .success(roomID), name: nil, timeout: 30)
+                        
+            await waitForRoomToSync(roomID: roomID, timeout: .seconds(30))
             
             return .success(())
+        } catch ClientError.MatrixApi(.forbidden, _, _) {
+            MXLog.error("Failed joining roomAlias: \(roomID) forbidden")
+            return .failure(.forbiddenAccess)
         } catch {
             MXLog.error("Failed joining roomID: \(roomID) with error: \(error)")
             return .failure(.sdkError(error))
@@ -395,12 +425,36 @@ class ClientProxy: ClientProxyProtocol {
         do {
             let room = try await client.joinRoomByIdOrAlias(roomIdOrAlias: roomAlias, serverNames: [])
             
-            // Wait for the room to appear in the room lists to avoid issues downstream
-            let _ = await waitForRoomSummary(with: .success(room.id()), name: nil, timeout: 30)
+            await waitForRoomToSync(roomID: room.id(), timeout: .seconds(30))
             
             return .success(())
+        } catch ClientError.MatrixApi(.forbidden, _, _) {
+            MXLog.error("Failed joining roomAlias: \(roomAlias) forbidden")
+            return .failure(.forbiddenAccess)
         } catch {
             MXLog.error("Failed joining roomAlias: \(roomAlias) with error: \(error)")
+            return .failure(.sdkError(error))
+        }
+    }
+    
+    func knockRoom(_ roomID: String, via: [String], message: String?) async -> Result<Void, ClientProxyError> {
+        do {
+            let _ = try await client.knock(roomIdOrAlias: roomID, reason: message, serverNames: via)
+            await waitForRoomToSync(roomID: roomID, timeout: .seconds(30))
+            return .success(())
+        } catch {
+            MXLog.error("Failed knocking roomID: \(roomID) with error: \(error)")
+            return .failure(.sdkError(error))
+        }
+    }
+    
+    func knockRoomAlias(_ roomAlias: String, message: String?) async -> Result<Void, ClientProxyError> {
+        do {
+            let room = try await client.knock(roomIdOrAlias: roomAlias, reason: message, serverNames: [])
+            await waitForRoomToSync(roomID: room.id(), timeout: .seconds(30))
+            return .success(())
+        } catch {
+            MXLog.error("Failed knocking roomAlias: \(roomAlias) with error: \(error)")
             return .failure(.sdkError(error))
         }
     }
@@ -415,38 +469,18 @@ class ClientProxy: ClientProxyProtocol {
             let data = try Data(contentsOf: media.url)
             let matrixUrl = try await client.uploadMedia(mimeType: mimeType, data: data, progressWatcher: nil)
             return .success(matrixUrl)
-        } catch let error as ClientError {
-            MXLog.error("Failed uploading media with error: \(error)")
-            return .failure(ClientProxyError.failedUploadingMedia(error, error.code))
+        } catch let ClientError.MatrixApi(errorKind, _, _) {
+            MXLog.error("Failed uploading media with error kind: \(errorKind)")
+            return .failure(ClientProxyError.failedUploadingMedia(errorKind))
         } catch {
             MXLog.error("Failed uploading media with error: \(error)")
             return .failure(ClientProxyError.sdkError(error))
         }
     }
-    
-    /// Await the room to be available in the room summary list
-    private func waitForRoomSummary(with result: Result<String, ClientProxyError>, name: String?, timeout: Int = 10) async -> Result<String, ClientProxyError> {
-        guard case .success(let roomID) = result else { return result }
-        let runner = ExpiringTaskRunner { [weak self] in
-            guard let roomLists = self?.roomSummaryProvider?.roomListPublisher.values else {
-                return
-            }
-            // for every list of summaries, we check if we have a room summary with matching ID and name (if present)
-            for await roomList in roomLists {
-                guard let summary = roomList.first(where: { $0.id == roomID }) else { continue }
-                guard let name else { break }
-                if summary.name == name {
-                    break
-                }
-            }
-        }
         
-        // we want to ignore the timeout error, and return the .success case because the room was properly created/joined already, we are only waiting for it to appear
-        try? await runner.run(timeout: .seconds(timeout))
-        return result
-    }
-    
     func roomForIdentifier(_ identifier: String) async -> RoomProxyType? {
+        let shouldAwait = roomsToAwait.remove(identifier) != nil
+        
         // Try fetching the room from the cold cache (if available) first
         if let room = await buildRoomForIdentifier(identifier) {
             return room
@@ -459,17 +493,22 @@ class ClientProxy: ClientProxyProtocol {
         }
         
         if !roomSummaryProvider.statePublisher.value.isLoaded {
-            _ = await roomSummaryProvider.statePublisher.values.first(where: { $0.isLoaded })
+            _ = await roomSummaryProvider.statePublisher.values.first { $0.isLoaded }
+        }
+        
+        if shouldAwait {
+            await waitForRoomToSync(roomID: identifier)
         }
         
         return await buildRoomForIdentifier(identifier)
     }
     
-    func roomPreviewForIdentifier(_ identifier: String, via: [String]) async -> Result<RoomPreviewDetails, ClientProxyError> {
+    func roomPreviewForIdentifier(_ identifier: String, via: [String]) async -> Result<RoomPreviewProxyProtocol, ClientProxyError> {
         do {
             let roomPreview = try await client.getRoomPreviewFromRoomId(roomId: identifier, viaServers: via)
-            return .success(.init(roomPreview))
-        } catch let error as ClientError where error.code == .forbidden {
+            return try .success(RoomPreviewProxy(roomPreview: roomPreview))
+        } catch ClientError.MatrixApi(.forbidden, _, _) {
+            MXLog.error("Failed retrieving preview for room: \(identifier) is private")
             return .failure(.roomPreviewIsPrivate)
         } catch {
             MXLog.error("Failed retrieving preview for room: \(identifier) with error: \(error)")
@@ -545,22 +584,22 @@ class ClientProxy: ClientProxyProtocol {
         }
     }
 
-    func sessionVerificationControllerProxy() async -> Result<SessionVerificationControllerProxyProtocol, ClientProxyError> {
-        do {
-            let sessionVerificationController = try await client.getSessionVerificationController()
-            return .success(SessionVerificationControllerProxy(sessionVerificationController: sessionVerificationController))
-        } catch {
-            MXLog.error("Failed retrieving session verification controller proxy with error: \(error)")
-            return .failure(.sdkError(error))
-        }
-    }
-
     func logout() async -> URL? {
         do {
             return try await client.logout().flatMap(URL.init(string:))
         } catch {
             MXLog.error("Failed logging out with error: \(error)")
             return nil
+        }
+    }
+    
+    func deactivateAccount(password: String?, eraseData: Bool) async -> Result<Void, ClientProxyError> {
+        do {
+            try await client.deactivateAccount(authData: password.map { .password(passwordDetails: .init(identifier: userID, password: $0)) },
+                                               eraseData: eraseData)
+            return .success(())
+        } catch {
+            return .failure(.sdkError(error))
         }
     }
     
@@ -592,12 +631,15 @@ class ClientProxy: ClientProxyProtocol {
     }
     
     func roomDirectorySearchProxy() -> RoomDirectorySearchProxyProtocol {
-        RoomDirectorySearchProxy(roomDirectorySearch: client.roomDirectorySearch())
+        RoomDirectorySearchProxy(roomDirectorySearch: client.roomDirectorySearch(), appSettings: appSettings)
     }
     
     func resolveRoomAlias(_ alias: String) async -> Result<ResolvedRoomAlias, ClientProxyError> {
         do {
-            let resolvedAlias = try await client.resolveRoomAlias(roomAlias: alias)
+            guard let resolvedAlias = try await client.resolveRoomAlias(roomAlias: alias) else {
+                MXLog.error("Failed resolving room alias, is nil")
+                return .failure(.failedResolvingRoomAlias)
+            }
             
             // Resolving aliases is done through the directory/room API which returns too many / all known
             // vias, which in turn results in invalid join requests. Trim them to something manageable
@@ -611,21 +653,18 @@ class ClientProxy: ClientProxyProtocol {
         }
     }
     
-    func getElementWellKnown() async -> Result<ElementWellKnown?, ClientProxyError> {
-        guard let userIDServerName,
-              var url = URL(string: "https://\(userIDServerName)") else {
-            return .failure(.invalidUserIDServerName)
-        }
-        
-        url.append(path: "/.well-known/element/element.json")
-        
+    func isAliasAvailable(_ alias: String) async -> Result<Bool, ClientProxyError> {
         do {
-            let response = try await client.getUrl(url: url.absoluteString)
-            let sdkWellKnown = try makeElementWellKnown(string: response)
-            return .success(ElementWellKnown(sdkWellKnown))
+            let result = try await client.isRoomAliasAvailable(alias: alias)
+            return .success(result)
         } catch {
+            MXLog.error("Failed checking if alias: \(alias) is available with error: \(error)")
             return .failure(.sdkError(error))
         }
+    }
+    
+    func getElementWellKnown() async -> Result<ElementWellKnown?, ClientProxyError> {
+        await client.getElementWellKnown().map(ElementWellKnown.init)
     }
         
     // MARK: Ignored users
@@ -683,7 +722,7 @@ class ClientProxy: ClientProxyProtocol {
         
         for roomID in roomIdentifiers {
             guard case let .joined(roomProxy) = await roomForIdentifier(roomID),
-                  roomProxy.isDirect,
+                  roomProxy.infoPublisher.value.isDirect,
                   let members = await roomProxy.members() else {
                 continue
             }
@@ -703,7 +742,7 @@ class ClientProxy: ClientProxyProtocol {
     
     // MARK: - Private
     
-    private func updateVerificationState(_ verificationState: VerificationState) {
+    private func updateVerificationState(_ verificationState: VerificationState) async {
         let verificationState: SessionVerificationState = switch verificationState {
         case .unknown:
             .unknown
@@ -713,7 +752,27 @@ class ClientProxy: ClientProxyProtocol {
             .verified
         }
         
+        // The session verification controller requires the user's identity which
+        // isn't available before a keys query response. Use the verification
+        // state updates as an aproximation for when that happens.
+        await buildSessionVerificationControllerProxyIfPossible(verificationState: verificationState)
+        
+        // Only update the session verification state after creating a session
+        // verification proxy to avoid race conditions
         verificationStateSubject.send(verificationState)
+    }
+    
+    private func buildSessionVerificationControllerProxyIfPossible(verificationState: SessionVerificationState) async {
+        guard sessionVerificationController == nil, verificationState != .unknown else {
+            return
+        }
+        
+        do {
+            let sessionVerificationController = try await client.getSessionVerificationController()
+            self.sessionVerificationController = SessionVerificationControllerProxy(sessionVerificationController: sessionVerificationController)
+        } catch {
+            MXLog.error("Failed retrieving session verification controller proxy with error: \(error)")
+        }
     }
 
     private func loadUserAvatarURLFromCache() {
@@ -739,20 +798,20 @@ class ClientProxy: ClientProxyProtocol {
         do {
             let syncService = try await client
                 .syncService()
-                .withCrossProcessLock(appIdentifier: "MainApp")
+                .withCrossProcessLock()
                 .withUtdHook(delegate: ClientDecryptionErrorDelegate(actionsSubject: actionsSubject))
                 .finish()
+            
             let roomListService = syncService.roomListService()
             
             let roomMessageEventStringBuilder = RoomMessageEventStringBuilder(attributedStringBuilder: AttributedStringBuilder(cacheKey: "roomList",
-                                                                                                                               mentionBuilder: PlainMentionBuilder()), prefix: .senderName)
+                                                                                                                               mentionBuilder: PlainMentionBuilder()), destination: .roomList)
             let eventStringBuilder = RoomEventStringBuilder(stateEventStringBuilder: RoomStateEventStringBuilder(userID: userID, shouldDisambiguateDisplayNames: false),
                                                             messageEventStringBuilder: roomMessageEventStringBuilder,
                                                             shouldDisambiguateDisplayNames: false,
                                                             shouldPrefixSenderName: true)
             
             roomSummaryProvider = RoomSummaryProvider(roomListService: roomListService,
-                                                      roomListServiceStatePublisher: roomListServiceStateSubject.asCurrentValuePublisher(),
                                                       eventStringBuilder: eventStringBuilder,
                                                       name: "AllRooms",
                                                       shouldUpdateVisibleRange: true,
@@ -761,9 +820,8 @@ class ClientProxy: ClientProxyProtocol {
             try await roomSummaryProvider?.setRoomList(roomListService.allRooms())
             
             alternateRoomSummaryProvider = RoomSummaryProvider(roomListService: roomListService,
-                                                               roomListServiceStatePublisher: roomListServiceStateSubject.asCurrentValuePublisher(),
                                                                eventStringBuilder: eventStringBuilder,
-                                                               name: "MessageForwarding",
+                                                               name: "AlternateAllRooms",
                                                                notificationSettings: notificationSettings,
                                                                appSettings: appSettings)
             try await alternateRoomSummaryProvider?.setRoomList(roomListService.allRooms())
@@ -791,6 +849,9 @@ class ClientProxy: ClientProxyProtocol {
                 break
             case .error:
                 restartSync()
+            case .offline:
+                // This needs to be enabled in the client builder first to be actually used
+                break
             }
         })
     }
@@ -800,8 +861,6 @@ class ClientProxy: ClientProxyProtocol {
             guard let self else { return }
             
             MXLog.info("Received room list update: \(state)")
-            
-            roomListServiceStateSubject.send(state)
             
             guard state != .error,
                   state != .terminated else {
@@ -831,12 +890,13 @@ class ClientProxy: ClientProxyProtocol {
         })
     }
     
-    private lazy var eventFilters: TimelineEventTypeFilter = {
+    private let eventFilters: TimelineEventTypeFilter = {
         var stateEventFilters: [StateEventType] = [.roomAliases,
                                                    .roomCanonicalAlias,
                                                    .roomGuestAccess,
                                                    .roomHistoryVisibility,
                                                    .roomJoinRules,
+                                                   .roomPinnedEvents,
                                                    .roomPowerLevels,
                                                    .roomServerAcl,
                                                    .roomTombstone,
@@ -845,28 +905,30 @@ class ClientProxy: ClientProxyProtocol {
                                                    .policyRuleRoom,
                                                    .policyRuleServer,
                                                    .policyRuleUser]
-        
-        // Reminder: once the feature flag is not required anymore, change the lazy var back to a let
-        if !appSettings.pinningEnabled {
-            stateEventFilters.append(.roomPinnedEvents)
-        }
-        
         return .exclude(eventTypes: stateEventFilters.map { FilterTimelineEventType.state(eventType: $0) })
     }()
     
-    private func buildRoomForIdentifier(_ identifier: String) async -> RoomProxyType? {
+    private func buildRoomForIdentifier(_ roomID: String) async -> RoomProxyType? {
         guard let roomListService else {
-            MXLog.error("Failed retrieving room: \(identifier), room list service not set up")
+            MXLog.error("Failed retrieving room: \(roomID), room list service not set up")
             return nil
         }
-        
+                
         do {
-            let roomListItem = try roomListService.room(roomId: identifier)
+            let roomListItem = try roomListService.room(roomId: roomID)
             
             switch roomListItem.membership() {
             case .invited:
-                return try .invited(InvitedRoomProxy(roomListItem: roomListItem,
-                                                     room: roomListItem.invitedRoom()))
+                return try await .invited(InvitedRoomProxy(roomListItem: roomListItem,
+                                                           roomPreview: roomListItem.previewRoom(via: []),
+                                                           ownUserID: userID))
+            case .knocked:
+                if appSettings.knockingEnabled {
+                    return try await .knocked(KnockedRoomProxy(roomListItem: roomListItem,
+                                                               roomPreview: roomListItem.previewRoom(via: []),
+                                                               ownUserID: userID))
+                }
+                return nil
             case .joined:
                 if roomListItem.isTimelineInitialized() == false {
                     try await roomListItem.initTimeline(eventTypeFilter: eventFilters, internalIdPrefix: nil)
@@ -879,13 +941,25 @@ class ClientProxy: ClientProxyProtocol {
                 return .joined(roomProxy)
             case .left:
                 return .left
+            case .banned:
+                return try await .banned(BannedRoomProxy(roomListItem: roomListItem,
+                                                         roomPreview: roomListItem.previewRoom(via: []),
+                                                         ownUserID: userID))
             }
         } catch {
-            MXLog.error("Failed retrieving room: \(identifier), with error: \(error)")
+            MXLog.error("Failed retrieving room: \(roomID), with error: \(error)")
             return nil
         }
     }
     
+    private func waitForRoomToSync(roomID: String, timeout: Duration = .seconds(10)) async {
+        let runner = ExpiringTaskRunner { [weak self] in
+            try await self?.client.awaitRoomRemoteEcho(roomId: roomID)
+        }
+        
+        _ = try? await runner.run(timeout: timeout)
+    }
+
     private func updateIgnoredUsers() {
         Task {
             do {
@@ -907,10 +981,51 @@ class ClientProxy: ClientProxyProtocol {
         await client.encryption().curve25519Key()
     }
     
+    func pinUserIdentity(_ userID: String) async -> Result<Void, ClientProxyError> {
+        MXLog.info("Pinning current identity for user: \(userID)")
+        
+        do {
+            guard let userIdentity = try await client.encryption().userIdentity(userId: userID) else {
+                MXLog.error("Failed retrieving identity for user: \(userID)")
+                return .failure(.failedRetrievingUserIdentity)
+            }
+            
+            return try await .success(userIdentity.pin())
+        } catch {
+            MXLog.error("Failed pinning current identity for user: \(error)")
+            return .failure(.sdkError(error))
+        }
+    }
+    
+    func withdrawUserIdentityVerification(_ userID: String) async -> Result<Void, ClientProxyError> {
+        MXLog.info("Withdrawing current identity verification for user: \(userID)")
+        
+        do {
+            guard let userIdentity = try await client.encryption().userIdentity(userId: userID) else {
+                MXLog.error("Failed retrieving identity for user: \(userID)")
+                return .failure(.failedRetrievingUserIdentity)
+            }
+            
+            return try await .success(userIdentity.withdrawVerification())
+        } catch {
+            MXLog.error("Failed withdrawing current identity verification for user: \(error)")
+            return .failure(.sdkError(error))
+        }
+    }
+    
     func resetIdentity() async -> Result<IdentityResetHandle?, ClientProxyError> {
         do {
             return try await .success(client.encryption().resetIdentity())
         } catch {
+            return .failure(.sdkError(error))
+        }
+    }
+    
+    func userIdentity(for userID: String) async -> Result<UserIdentityProxyProtocol?, ClientProxyError> {
+        do {
+            return try await .success(client.encryption().userIdentity(userId: userID).map(UserIdentityProxy.init))
+        } catch {
+            MXLog.error("Failed retrieving user identity: \(error)")
             return .failure(.sdkError(error))
         }
     }
@@ -925,8 +1040,8 @@ extension ClientProxy: MediaLoaderProtocol {
         try await mediaLoader.loadMediaThumbnailForSource(source, width: width, height: height)
     }
     
-    func loadMediaFileForSource(_ source: MediaSourceProxy, body: String?) async throws -> MediaFileHandleProxy {
-        try await mediaLoader.loadMediaFileForSource(source, body: body)
+    func loadMediaFileForSource(_ source: MediaSourceProxy, filename: String?) async throws -> MediaFileHandleProxy {
+        try await mediaLoader.loadMediaFileForSource(source, filename: filename)
     }
 }
 
@@ -1030,21 +1145,5 @@ private class SendQueueRoomErrorListenerProxy: SendQueueRoomErrorListener {
     
     func onError(roomId: String, error: ClientError) {
         onErrorClosure(roomId, error)
-    }
-}
-
-private extension RoomPreviewDetails {
-    init(_ roomPreview: RoomPreview) {
-        self = RoomPreviewDetails(roomID: roomPreview.roomId,
-                                  name: roomPreview.name,
-                                  canonicalAlias: roomPreview.canonicalAlias,
-                                  topic: roomPreview.topic,
-                                  avatarURL: roomPreview.avatarUrl.flatMap(URL.init(string:)),
-                                  memberCount: UInt(roomPreview.numJoinedMembers),
-                                  isHistoryWorldReadable: roomPreview.isHistoryWorldReadable,
-                                  isJoined: roomPreview.isJoined,
-                                  isInvited: roomPreview.isInvited,
-                                  isPublic: roomPreview.isPublic,
-                                  canKnock: roomPreview.canKnock)
     }
 }

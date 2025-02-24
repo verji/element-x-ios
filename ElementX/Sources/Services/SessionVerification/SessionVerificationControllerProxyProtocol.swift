@@ -1,14 +1,17 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
 import Foundation
+import MatrixRustSDK
 
 enum SessionVerificationControllerProxyError: Error {
+    case failedAcknowledgingVerificationRequest
+    case failedAcceptingVerificationRequest
     case failedRequestingVerification
     case failedStartingSasVerification
     case failedApprovingVerification
@@ -16,13 +19,22 @@ enum SessionVerificationControllerProxyError: Error {
     case failedCancellingVerification
 }
 
-enum SessionVerificationControllerProxyCallback {
+enum SessionVerificationControllerProxyAction {
+    case receivedVerificationRequest(details: SessionVerificationRequestDetails)
     case acceptedVerificationRequest
     case startedSasVerification
     case receivedVerificationData([SessionVerificationEmoji])
     case finished
     case cancelled
     case failed
+}
+
+struct SessionVerificationRequestDetails {
+    let senderProfile: UserProfileProxy
+    let flowID: String
+    let deviceID: String
+    let deviceDisplayName: String?
+    let firstSeenDate: Date
 }
 
 struct SessionVerificationEmoji: Hashable {
@@ -36,9 +48,15 @@ struct SessionVerificationEmoji: Hashable {
 
 // sourcery: AutoMockable
 protocol SessionVerificationControllerProxyProtocol {
-    var callbacks: PassthroughSubject<SessionVerificationControllerProxyCallback, Never> { get }
+    var actions: PassthroughSubject<SessionVerificationControllerProxyAction, Never> { get }
+    
+    func acknowledgeVerificationRequest(details: SessionVerificationRequestDetails) async -> Result<Void, SessionVerificationControllerProxyError>
+    
+    func acceptVerificationRequest() async -> Result<Void, SessionVerificationControllerProxyError>
         
-    func requestVerification() async -> Result<Void, SessionVerificationControllerProxyError>
+    func requestDeviceVerification() async -> Result<Void, SessionVerificationControllerProxyError>
+    
+    func requestUserVerification(_ userID: String) async -> Result<Void, SessionVerificationControllerProxyError>
     
     func startSasVerification() async -> Result<Void, SessionVerificationControllerProxyError>
     

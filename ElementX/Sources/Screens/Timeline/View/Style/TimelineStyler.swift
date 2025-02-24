@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -25,7 +25,7 @@ struct TimelineStyler<Content: View>: View {
 
     var body: some View {
         mainContent
-            .onChange(of: timelineItem.properties.deliveryStatus) { newStatus in
+            .onChange(of: timelineItem.properties.deliveryStatus) { _, newStatus in
                 if case .sendingFailed = newStatus {
                     guard task == nil else {
                         return
@@ -57,8 +57,8 @@ struct TimelineStyler<Content: View>: View {
 struct TimelineItemStyler_Previews: PreviewProvider, TestablePreview {
     static let viewModel = TimelineViewModel.mock
 
-    static let base = TextRoomTimelineItem(id: .random,
-                                           timestamp: "Now",
+    static let base = TextRoomTimelineItem(id: .randomEvent,
+                                           timestamp: .mock,
                                            isOutgoing: true,
                                            isEditable: false,
                                            canBeRepliedTo: true,
@@ -79,9 +79,9 @@ struct TimelineItemStyler_Previews: PreviewProvider, TestablePreview {
     }()
 
     static let sendingLast: TextRoomTimelineItem = {
-        let id = viewModel.state.timelineViewState.timelineIDs.last ?? UUID().uuidString
-        var result = TextRoomTimelineItem(id: .init(timelineID: id),
-                                          timestamp: "Now",
+        let id = viewModel.state.timelineState.uniqueIDs.last ?? .init(UUID().uuidString)
+        var result = TextRoomTimelineItem(id: .event(uniqueID: id, eventOrTransactionID: .eventID(UUID().uuidString)),
+                                          timestamp: .mock,
                                           isOutgoing: true,
                                           isEditable: false,
                                           canBeRepliedTo: true,
@@ -99,9 +99,9 @@ struct TimelineItemStyler_Previews: PreviewProvider, TestablePreview {
     }()
 
     static let sentLast: TextRoomTimelineItem = {
-        let id = viewModel.state.timelineViewState.timelineIDs.last ?? UUID().uuidString
-        let result = TextRoomTimelineItem(id: .init(timelineID: id),
-                                          timestamp: "Now",
+        let id = viewModel.state.timelineState.uniqueIDs.last ?? .init(UUID().uuidString)
+        let result = TextRoomTimelineItem(id: .event(uniqueID: id, eventOrTransactionID: .eventID(UUID().uuidString)),
+                                          timestamp: .mock,
                                           isOutgoing: true,
                                           isEditable: false,
                                           canBeRepliedTo: true,
@@ -111,24 +111,24 @@ struct TimelineItemStyler_Previews: PreviewProvider, TestablePreview {
         return result
     }()
 
-    static let ltrString = TextRoomTimelineItem(id: .random,
-                                                timestamp: "Now",
+    static let ltrString = TextRoomTimelineItem(id: .randomEvent,
+                                                timestamp: .mock,
                                                 isOutgoing: true,
                                                 isEditable: false,
                                                 canBeRepliedTo: true,
                                                 isThreaded: false,
                                                 sender: .test, content: .init(body: "house!"))
 
-    static let rtlString = TextRoomTimelineItem(id: .random,
-                                                timestamp: "Now",
+    static let rtlString = TextRoomTimelineItem(id: .randomEvent,
+                                                timestamp: .mock,
                                                 isOutgoing: true,
                                                 isEditable: false,
                                                 canBeRepliedTo: true,
                                                 isThreaded: false,
                                                 sender: .test, content: .init(body: "באמת!"))
 
-    static let ltrStringThatContainsRtl = TextRoomTimelineItem(id: .random,
-                                                               timestamp: "Now",
+    static let ltrStringThatContainsRtl = TextRoomTimelineItem(id: .randomEvent,
+                                                               timestamp: .mock,
                                                                isOutgoing: true,
                                                                isEditable: false,
                                                                canBeRepliedTo: true,
@@ -136,8 +136,8 @@ struct TimelineItemStyler_Previews: PreviewProvider, TestablePreview {
                                                                sender: .test,
                                                                content: .init(body: "house! -- באמת‏! -- house!"))
 
-    static let rtlStringThatContainsLtr = TextRoomTimelineItem(id: .random,
-                                                               timestamp: "Now",
+    static let rtlStringThatContainsLtr = TextRoomTimelineItem(id: .randomEvent,
+                                                               timestamp: .mock,
                                                                isOutgoing: true,
                                                                isEditable: false,
                                                                canBeRepliedTo: true,
@@ -145,8 +145,8 @@ struct TimelineItemStyler_Previews: PreviewProvider, TestablePreview {
                                                                sender: .test,
                                                                content: .init(body: "באמת‏! -- house! -- באמת!"))
 
-    static let ltrStringThatFinishesInRtl = TextRoomTimelineItem(id: .random,
-                                                                 timestamp: "Now",
+    static let ltrStringThatFinishesInRtl = TextRoomTimelineItem(id: .randomEvent,
+                                                                 timestamp: .mock,
                                                                  isOutgoing: true,
                                                                  isEditable: false,
                                                                  canBeRepliedTo: true,
@@ -154,8 +154,8 @@ struct TimelineItemStyler_Previews: PreviewProvider, TestablePreview {
                                                                  sender: .test,
                                                                  content: .init(body: "house! -- באמת!"))
 
-    static let rtlStringThatFinishesInLtr = TextRoomTimelineItem(id: .random,
-                                                                 timestamp: "Now",
+    static let rtlStringThatFinishesInLtr = TextRoomTimelineItem(id: .randomEvent,
+                                                                 timestamp: .mock,
                                                                  isOutgoing: true,
                                                                  isEditable: false,
                                                                  canBeRepliedTo: true,

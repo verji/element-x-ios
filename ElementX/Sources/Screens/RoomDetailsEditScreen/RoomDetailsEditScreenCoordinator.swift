@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -11,6 +11,7 @@ import SwiftUI
 struct RoomDetailsEditScreenCoordinatorParameters {
     let roomProxy: JoinedRoomProxyProtocol
     let mediaProvider: MediaProviderProtocol
+    let mediaUploadingPreprocessor: MediaUploadingPreprocessor
     weak var navigationStackCoordinator: NavigationStackCoordinator?
     let userIndicatorController: UserIndicatorControllerProtocol
     let orientationManager: OrientationManagerProtocol
@@ -35,6 +36,7 @@ final class RoomDetailsEditScreenCoordinator: CoordinatorProtocol {
         
         viewModel = RoomDetailsEditScreenViewModel(roomProxy: parameters.roomProxy,
                                                    mediaProvider: parameters.mediaProvider,
+                                                   mediaUploadingPreprocessor: parameters.mediaUploadingPreprocessor,
                                                    userIndicatorController: parameters.userIndicatorController)
     }
     

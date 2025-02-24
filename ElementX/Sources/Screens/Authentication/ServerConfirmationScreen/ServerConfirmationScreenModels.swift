@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -22,6 +22,8 @@ struct ServerConfirmationScreenViewState: BindableState {
     /// The presentation anchor used for OIDC authentication.
     var window: UIWindow?
     
+    var bindings = ServerConfirmationScreenBindings()
+    
     /// The screen's title.
     var title: String {
         switch authenticationFlow {
@@ -37,16 +39,21 @@ struct ServerConfirmationScreenViewState: BindableState {
         switch authenticationFlow {
         case .login:
             if homeserverAddress == "matrix.org" {
-                return L10n.screenServerConfirmationMessageLoginMatrixDotOrg
+                L10n.screenServerConfirmationMessageLoginMatrixDotOrg
             } else if homeserverAddress == "element.io" {
-                return L10n.screenServerConfirmationMessageLoginElementDotIo
+                L10n.screenServerConfirmationMessageLoginElementDotIo
             } else {
-                return ""
+                ""
             }
         case .register:
-            return L10n.screenServerConfirmationMessageRegister
+            L10n.screenServerConfirmationMessageRegister
         }
     }
+}
+
+struct ServerConfirmationScreenBindings {
+    /// Information describing the currently displayed alert.
+    var alertInfo: AlertInfo<ServerConfirmationScreenAlert>?
 }
 
 enum ServerConfirmationScreenViewAction {
@@ -56,4 +63,19 @@ enum ServerConfirmationScreenViewAction {
     case confirm
     /// The user would like to change to a different homeserver.
     case changeServer
+}
+
+enum ServerConfirmationScreenAlert: Hashable {
+    /// An alert that informs the user that a server could not be found.
+    case homeserverNotFound
+    /// An alert that informs the user about a bad well-known file.
+    case invalidWellKnown(String)
+    /// An alert that allows the user to learn about sliding sync.
+    case slidingSync
+    /// An alert that informs the user that login isn't supported.
+    case login
+    /// An alert that informs the user that registration isn't supported.
+    case registration
+    /// An unknown error has occurred.
+    case unknownError
 }

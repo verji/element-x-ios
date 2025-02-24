@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -45,8 +45,11 @@ class MessageForwardingScreenViewModel: MessageForwardingScreenViewModelType, Me
             .map(\.bindings.searchQuery)
             .removeDuplicates()
             .sink { [weak self] searchQuery in
-                guard let self else { return }
-                self.roomSummaryProvider.setFilter(.search(query: searchQuery))
+                if searchQuery.isEmpty {
+                    self?.roomSummaryProvider.setFilter(.all(filters: []))
+                } else {
+                    self?.roomSummaryProvider.setFilter(.search(query: searchQuery))
+                }
             }
             .store(in: &cancellables)
         
@@ -79,8 +82,10 @@ class MessageForwardingScreenViewModel: MessageForwardingScreenViewModelType, Me
                 continue
             }
             
-            let room = MessageForwardingRoom(id: summary.id, name: summary.name, alias: summary.canonicalAlias, avatar: summary.avatar)
-            rooms.append(room)
+            rooms.append(.init(id: summary.id,
+                               title: summary.name,
+                               description: summary.roomListDescription,
+                               avatar: summary.avatar))
         }
         
         state.rooms = rooms

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -11,11 +11,16 @@ import WysiwygComposer
 /// A table view wrapper that displays the timeline of a room.
 struct TimelineView: UIViewControllerRepresentable {
     @EnvironmentObject private var viewModelContext: TimelineViewModel.Context
-    
+    @Environment(\.openURL) var openURL
+
     func makeUIViewController(context: Context) -> TimelineTableViewController {
         let tableViewController = TimelineTableViewController(coordinator: context.coordinator,
                                                               isScrolledToBottom: $viewModelContext.isScrolledToBottom,
-                                                              scrollToBottomPublisher: viewModelContext.viewState.timelineViewState.scrollToBottomPublisher)
+                                                              scrollToBottomPublisher: viewModelContext.viewState.timelineState.scrollToBottomPublisher)
+        // Needs to be dispatched on main asynchronously otherwise we get a runtime warning
+        DispatchQueue.main.async {
+            viewModelContext.send(viewAction: .setOpenURLAction(openURL))
+        }
         return tableViewController
     }
     
@@ -39,21 +44,24 @@ struct TimelineView: UIViewControllerRepresentable {
         
         /// Updates the specified table view's properties from the current view state.
         func update(tableViewController: TimelineTableViewController) {
-            if tableViewController.isSwitchingTimelines != context.viewState.timelineViewState.isSwitchingTimelines {
+            if tableViewController.isSwitchingTimelines != context.viewState.timelineState.isSwitchingTimelines {
                 // Must come before timelineItemsDictionary in order to disable animations.
-                tableViewController.isSwitchingTimelines = context.viewState.timelineViewState.isSwitchingTimelines
+                tableViewController.isSwitchingTimelines = context.viewState.timelineState.isSwitchingTimelines
             }
-            if tableViewController.timelineItemsDictionary != context.viewState.timelineViewState.itemsDictionary {
-                tableViewController.timelineItemsDictionary = context.viewState.timelineViewState.itemsDictionary
+            if tableViewController.timelineItemsDictionary != context.viewState.timelineState.itemsDictionary {
+                tableViewController.timelineItemsDictionary = context.viewState.timelineState.itemsDictionary
             }
-            if tableViewController.paginationState != context.viewState.timelineViewState.paginationState {
-                tableViewController.paginationState = context.viewState.timelineViewState.paginationState
+            if tableViewController.paginationState != context.viewState.timelineState.paginationState {
+                tableViewController.paginationState = context.viewState.timelineState.paginationState
             }
-            if tableViewController.isLive != context.viewState.timelineViewState.isLive {
-                tableViewController.isLive = context.viewState.timelineViewState.isLive
+            if tableViewController.isLive != context.viewState.timelineState.isLive {
+                tableViewController.isLive = context.viewState.timelineState.isLive
             }
-            if tableViewController.focussedEvent != context.viewState.timelineViewState.focussedEvent {
-                tableViewController.focussedEvent = context.viewState.timelineViewState.focussedEvent
+            if tableViewController.focussedEvent != context.viewState.timelineState.focussedEvent {
+                tableViewController.focussedEvent = context.viewState.timelineState.focussedEvent
+            }
+            if tableViewController.hideTimelineMedia != context.viewState.hideTimelineMedia {
+                tableViewController.hideTimelineMedia = context.viewState.hideTimelineMedia
             }
             
             if tableViewController.typingMembers.members != context.viewState.typingMembers {
@@ -74,14 +82,16 @@ struct TimelineView_Previews: PreviewProvider, TestablePreview {
                                                          name: "Preview room"))
     static let roomViewModel = RoomScreenViewModel.mock(roomProxyMock: roomProxyMock)
     static let timelineViewModel = TimelineViewModel(roomProxy: roomProxyMock,
-                                                     timelineController: MockRoomTimelineController(),
-                                                     mediaProvider: MockMediaProvider(),
+                                                     timelineController: MockTimelineController(),
+                                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                                      mediaPlayerProvider: MediaPlayerProviderMock(),
                                                      voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                                      userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                      appMediator: AppMediatorMock.default,
                                                      appSettings: ServiceLocator.shared.settings,
-                                                     analyticsService: ServiceLocator.shared.analytics)
+                                                     analyticsService: ServiceLocator.shared.analytics,
+                                                     emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                                     timelineControllerFactory: TimelineControllerFactoryMock(.init()))
 
     static var previews: some View {
         NavigationStack {

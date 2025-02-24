@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -11,7 +11,7 @@ struct SeparatorRoomTimelineView: View {
     let timelineItem: SeparatorRoomTimelineItem
     
     var body: some View {
-        Text(timelineItem.text)
+        Text(timelineItem.timestamp.formatted(date: .complete, time: .omitted))
             .font(.compound.bodySMSemibold)
             .foregroundColor(.compound.textPrimary)
             .frame(maxWidth: .infinity)
@@ -23,7 +23,8 @@ struct SeparatorRoomTimelineView: View {
 
 struct SeparatorRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
-        let item = SeparatorRoomTimelineItem(id: .init(timelineID: "Separator"), text: "This is a separator")
+        let item = SeparatorRoomTimelineItem(id: .virtual(uniqueID: .init("Separator")),
+                                             timestamp: .mock)
         SeparatorRoomTimelineView(timelineItem: item)
     }
 }

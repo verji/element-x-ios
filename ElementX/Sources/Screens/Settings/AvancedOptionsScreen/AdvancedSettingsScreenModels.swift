@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -26,12 +26,16 @@ struct AdvancedSettingsScreenViewStateBindings {
     }
 }
 
-enum AdvancedSettingsScreenViewAction { }
+enum AdvancedSettingsScreenViewAction {
+    case optimizeMediaUploadsChanged
+}
 
 protocol AdvancedSettingsProtocol: AnyObject {
     var viewSourceEnabled: Bool { get set }
     var appAppearance: AppAppearance { get set }
     var sharePresence: Bool { get set }
+    
+    var optimizeMediaUploads: Bool { get set }
 }
 
 extension AppSettings: AdvancedSettingsProtocol { }

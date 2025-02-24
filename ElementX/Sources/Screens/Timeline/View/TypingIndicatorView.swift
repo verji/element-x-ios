@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -14,12 +14,12 @@ struct TypingIndicatorView: View {
     var body: some View {
         content
             .font(.compound.bodySM)
-            .foregroundColor(.compound.textPlaceholder)
+            .foregroundColor(.compound.textSecondary)
             .lineLimit(1)
             .truncationMode(.middle)
             .padding(.horizontal, 4)
             .animation(.elementDefault, value: typingMembers.members)
-            .onChange(of: typingMembers.members) { newValue in
+            .onChange(of: typingMembers.members) { _, newValue in
                 if !newValue.isEmpty {
                     didShowTextOnce = true
                 }

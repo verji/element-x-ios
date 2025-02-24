@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -39,34 +39,34 @@ struct RoomChangeRolesScreenRow_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         Form {
             RoomChangeRolesScreenRow(member: .init(withProxy: RoomMemberProxyMock.mockAlice),
-                                     mediaProvider: MockMediaProvider(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      isSelected: true,
                                      action: action)
             
             RoomChangeRolesScreenRow(member: .init(withProxy: RoomMemberProxyMock.mockBob),
-                                     mediaProvider: MockMediaProvider(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      isSelected: false,
                                      action: action)
             
             RoomChangeRolesScreenRow(member: .init(withProxy: RoomMemberProxyMock.mockInvited),
-                                     mediaProvider: MockMediaProvider(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      isSelected: false,
                                      action: action)
             
             RoomChangeRolesScreenRow(member: .init(withProxy: RoomMemberProxyMock.mockCharlie),
-                                     mediaProvider: MockMediaProvider(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      isSelected: true,
                                      action: action)
                 .disabled(true)
             
             RoomChangeRolesScreenRow(member: .init(withProxy: RoomMemberProxyMock(with: .init(userID: "@someone:matrix.org", membership: .join))),
-                                     mediaProvider: MockMediaProvider(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      isSelected: false,
                                      action: action)
                 .disabled(true)
             
             RoomChangeRolesScreenRow(member: .init(withProxy: RoomMemberProxyMock(with: .init(userID: "@someone:matrix.org", membership: .join))),
-                                     mediaProvider: MockMediaProvider(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      isSelected: false,
                                      action: action)
         }

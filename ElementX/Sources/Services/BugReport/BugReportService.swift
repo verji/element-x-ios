@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -76,7 +76,7 @@ class BugReportService: NSObject, BugReportServiceProtocol {
         }
         
         if bugReport.includeLogs {
-            let logAttachments = await zipFiles(RustTracing.logFiles)
+            let logAttachments = await zipFiles(Tracing.logFiles)
             for url in logAttachments.files {
                 params.append(MultipartFormData(key: "compressed-log", type: .file(url: url)))
             }
@@ -117,14 +117,14 @@ class BugReportService: NSObject, BugReportServiceProtocol {
             let (data, response) = try await session.dataWithRetry(for: request, delegate: self)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                let errorDescription = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                let errorDescription = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Unknown error"
                 MXLog.error("Failed to submit bug report: \(errorDescription)")
                 MXLog.error("Response: \(response)")
                 return .failure(.serverError(response, errorDescription))
             }
             
             guard httpResponse.statusCode == 200 else {
-                let errorDescription = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                let errorDescription = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Unknown error"
                 MXLog.error("Failed to submit bug report: \(errorDescription) (\(httpResponse.statusCode))")
                 MXLog.error("Response: \(httpResponse)")
                 return .failure(.httpError(httpResponse, errorDescription))
@@ -163,8 +163,7 @@ class BugReportService: NSObject, BugReportServiceProtocol {
             MultipartFormData(key: "fallback_language", type: .text(value: Bundle.app.developmentLocalization ?? "null")),
             MultipartFormData(key: "local_time", type: .text(value: localTime)),
             MultipartFormData(key: "utc_time", type: .text(value: utcTime)),
-            MultipartFormData(key: "base_bundle_identifier", type: .text(value: InfoPlistReader.main.baseBundleIdentifier)),
-            MultipartFormData(key: "rust_tracing_filter", type: .text(value: RustTracing.currentTracingConfiguration?.filter ?? "null"))
+            MultipartFormData(key: "base_bundle_identifier", type: .text(value: InfoPlistReader.main.baseBundleIdentifier))
         ]
     }
 

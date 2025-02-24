@@ -1,13 +1,13 @@
 {
-  "originHash" : "1b1fb14b1ac1438c44ffd2f0151af65c83018d71b8674cd7f13ec21abeb31bcd",
+  "originHash" : "f9011692b20e61e6f0df94b6e0946a4c8f4d58429a88998f249712bb1fee47f1",
   "pins" : [
     {
       "identity" : "compound-design-tokens",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/element-hq/compound-design-tokens",
       "state" : {
-        "revision" : "b9723186abc3623c9648b1500c6e3d56e4571179",
-        "version" : "1.7.0"
+        "revision" : "3e3f83f61ad48acc8532636a773ccdeafd3834fe",
+        "version" : "4.0.0"
       }
     },
     {
@@ -15,7 +15,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/element-hq/compound-ios",
       "state" : {
-        "revision" : "ab79d0cc5e5bb2ef3624b76c99471e414c12e8da"
+        "revision" : "5af528a2925816ab0ee1945c6321e7c476baca8a"
       }
     },
     {
@@ -23,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/devicekit/DeviceKit",
       "state" : {
-        "revision" : "fe41d18eccd92a115cffaa35dfff03018c67e635",
-        "version" : "5.2.2"
+        "revision" : "7ff5331960151aec74fb422e1d45f54ef6cc086d",
+        "version" : "5.5.0"
       }
     },
     {
@@ -59,8 +59,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/matrix-org/emojibase-bindings",
       "state" : {
-        "revision" : "6ca06fefac9329fece851a2a4df7979b1699970a",
-        "version" : "1.0.5"
+        "revision" : "d4682a2ad5e68cfd2f41544c3c6c970b4d524bd1",
+        "version" : "1.3.3"
       }
     },
     {
@@ -68,8 +68,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/nicklockwood/GZIP",
       "state" : {
-        "revision" : "bd55f1d89e71ae3f481da74cd4adeadbb849620c",
-        "version" : "1.3.1"
+        "revision" : "f710a37aa978a93b815a4f64bd504dc4c3256312",
+        "version" : "1.3.2"
       }
     },
     {
@@ -86,8 +86,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/onevcat/Kingfisher",
       "state" : {
-        "revision" : "af4be924ad984cf4d16f4ae4df424e79a443d435",
-        "version" : "7.6.2"
+        "revision" : "33696a71dd4d71f1b0f781ade11a48ba5549581a",
+        "version" : "8.0.3"
       }
     },
     {
@@ -95,8 +95,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/krzysztofzablocki/KZFileWatchers",
       "state" : {
-        "branch" : "master",
-        "revision" : "d27a9557427d261adccdf4b566acc9d9c0fec6f4"
+        "revision" : "d27a9557427d261adccdf4b566acc9d9c0fec6f4",
+        "version" : "1.2.0"
       }
     },
     {
@@ -131,17 +131,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/matrix-org/matrix-analytics-events",
       "state" : {
-        "revision" : "de0cac487e5e7f607ee17045882204c91585461f",
-        "version" : "0.23.1"
+        "revision" : "632f4266d5ebd5b87b9eb52522f5117723fcd338",
+        "version" : "0.28.0"
       }
     },
     {
       "identity" : "matrix-rich-text-editor-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/matrix-org/matrix-rich-text-editor-swift",
+      "location" : "https://github.com/element-hq/matrix-rich-text-editor-swift",
       "state" : {
-        "revision" : "30909decc48be8e06c93eacffa4ec71b539888a9",
-        "version" : "2.37.7"
+        "revision" : "b6583a47b5d14d2dc8405a0303ebd4041b877707",
+        "version" : "2.37.12"
       }
     },
     {
@@ -149,8 +149,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/element-hq/matrix-rust-components-swift",
       "state" : {
-        "revision" : "343d7045a0ad6fe508728f624a02698e679327fb",
-        "version" : "1.0.44"
+        "revision" : "422d7bef3ffd3edcb3e30afb410ee523f5659adc",
+        "version" : "25.2.17"
       }
     },
     {
@@ -185,8 +185,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/BarredEwe/Prefire",
       "state" : {
-        "revision" : "237f4005c81f74d5359eddb534d2d10925ef2787",
-        "version" : "2.8.0"
+        "revision" : "172a7f0a95f99f6656f6b2d0531b648c08d26c56",
+        "version" : "2.10.0"
       }
     },
     {
@@ -248,8 +248,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
       "state" : {
-        "revision" : "c097f955b4e724690f0fc8ffb7a6d4b881c9c4e3",
-        "version" : "1.17.2"
+        "revision" : "7b0bbbae90c41f848f90ac7b4df6c4f50068256d",
+        "version" : "1.17.5"
       }
     },
     {
@@ -284,8 +284,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mxcl/Version",
       "state" : {
-        "revision" : "1fe824b80d89201652e7eca7c9252269a1d85e25",
-        "version" : "2.0.1"
+        "revision" : "303a0f916772545e1e8667d3104f83be708a723c",
+        "version" : "2.1.0"
       }
     }
   ],

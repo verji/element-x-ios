@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -30,6 +30,7 @@ final class NotificationManagerTests: XCTestCase {
         notificationCenter = UserNotificationCenterMock()
         notificationCenter.requestAuthorizationOptionsReturnValue = true
         notificationCenter.authorizationStatusReturnValue = .authorized
+        notificationCenter.notificationSettingsClosure = { await UNUserNotificationCenter.current().notificationSettings() }
         
         notificationManager = NotificationManager(notificationCenter: notificationCenter, appSettings: appSettings)
         notificationManager.start()
@@ -108,15 +109,16 @@ final class NotificationManagerTests: XCTestCase {
         XCTAssertEqual(request.content.title, "Title")
         XCTAssertEqual(request.content.subtitle, "Subtitle")
     }
-
+    
     func test_whenStart_notificationCategoriesAreSet() throws {
-        //        let replyAction = UNTextInputNotificationAction(identifier: NotificationConstants.Action.inlineReply,
-        //                                                        title: L10n.actionQuickReply,
-        //                                                        options: [])
+        let replyAction = UNTextInputNotificationAction(identifier: NotificationConstants.Action.inlineReply,
+                                                        title: L10n.actionQuickReply,
+                                                        options: [])
         let messageCategory = UNNotificationCategory(identifier: NotificationConstants.Category.message,
-                                                     actions: [],
+                                                     actions: [replyAction],
                                                      intentIdentifiers: [],
                                                      options: [])
+        
         let inviteCategory = UNNotificationCategory(identifier: NotificationConstants.Category.invite,
                                                     actions: [],
                                                     intentIdentifiers: [],

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -13,13 +13,13 @@ import XCTest
 class RoomPollsHistoryScreenViewModelTests: XCTestCase {
     var viewModel: RoomPollsHistoryScreenViewModelProtocol!
     var interactionHandler: PollInteractionHandlerMock!
-    var timelineController: MockRoomTimelineController!
+    var timelineController: MockTimelineController!
     
     override func setUpWithError() throws {
         interactionHandler = PollInteractionHandlerMock()
-        timelineController = MockRoomTimelineController()
+        timelineController = MockTimelineController()
         viewModel = RoomPollsHistoryScreenViewModel(pollInteractionHandler: interactionHandler,
-                                                    roomTimelineController: timelineController,
+                                                    timelineController: timelineController,
                                                     userIndicatorController: UserIndicatorControllerMock())
     }
 

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -32,6 +32,7 @@ enum SoftLogoutScreenCoordinatorResult: CustomStringConvertible {
     }
 }
 
+// Note: This code was brought over from Riot, we should move the authentication service logic into the view model.
 final class SoftLogoutScreenCoordinator: CoordinatorProtocol {
     private let parameters: SoftLogoutScreenCoordinatorParameters
     private var viewModel: SoftLogoutScreenViewModelProtocol
@@ -82,15 +83,6 @@ final class SoftLogoutScreenCoordinator: CoordinatorProtocol {
     
     func toPresentable() -> AnyView {
         AnyView(SoftLogoutScreen(context: viewModel.context))
-    }
-    
-    func handleOIDCRedirectURL(_ url: URL) {
-        guard let oidcPresenter else {
-            MXLog.error("Failed to find an OIDC request in progress.")
-            return
-        }
-        
-        oidcPresenter.handleUniversalLinkCallback(url)
     }
     
     // MARK: - Private

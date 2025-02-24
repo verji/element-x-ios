@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import AVFoundation
@@ -35,14 +35,19 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
         return CXProvider(configuration: configuration)
     }()
     
-    private weak var clientProxy: ClientProxyProtocol?
+    private weak var clientProxy: ClientProxyProtocol? {
+        didSet {
+            // There's a race condition where a call starts when the app has been killed and the
+            // observation set in `incomingCallID` occurs *before* the user session is restored.
+            // So observe when the client proxy is set to fix this (the method guards for the call).
+            Task { await observeIncomingCallRoomInfo() }
+        }
+    }
     
-    private var cancellables = Set<AnyCancellable>()
+    private var incomingCallRoomInfoCancellable: AnyCancellable?
     private var incomingCallID: CallID? {
         didSet {
-            Task {
-                await observeIncomingCallRoomStateUpdates()
-            }
+            Task { await observeIncomingCallRoomInfo() }
         }
     }
     
@@ -94,15 +99,18 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
         incomingCallID = nil
         ongoingCallID = callID
         
-        let handle = CXHandle(type: .generic, value: roomDisplayName)
-        let startCallAction = CXStartCallAction(call: callID.callKitID, handle: handle)
-        startCallAction.isVideo = true
+        // Don't bother starting another CallKit session as it won't work properly
+        // https://developer.apple.com/forums//thread/767949?answerId=812951022#812951022
         
-        do {
-            try await callController.request(CXTransaction(action: startCallAction))
-        } catch {
-            MXLog.error("Failed requesting start call action with error: \(error)")
-        }
+        // let handle = CXHandle(type: .generic, value: roomDisplayName)
+        // let startCallAction = CXStartCallAction(call: callID.callKitID, handle: handle)
+        // startCallAction.isVideo = true
+        
+        // do {
+        //     try await callController.request(CXTransaction(action: startCallAction))
+        // } catch {
+        //     MXLog.error("Failed requesting start call action with error: \(error)")
+        // }
     }
     
     func tearDownCallSession() {
@@ -154,16 +162,18 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
         // https://stackoverflow.com/a/41230020/730924
         update.remoteHandle = .init(type: .generic, value: roomID)
         
-        callProvider.reportNewIncomingCall(with: callID.callKitID, update: update) { error in
+        callProvider.reportNewIncomingCall(with: callID.callKitID, update: update) { [weak self] error in
             if let error {
                 MXLog.error("Failed reporting new incoming call with error: \(error)")
             }
+            
+            self?.actionsSubject.send(.receivedIncomingCallRequest)
             
             completion()
         }
         
         endUnansweredCallTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(15))
+            try? await Task.sleep(for: .seconds(90))
             
             guard let self, !Task.isCancelled else {
                 return
@@ -204,6 +214,8 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
         // Reporting the call as ended imediately after answering it works around that
         // as EC gets access to media again and EX builds the right UI in `setupCallSession`
         //
+        // https://developer.apple.com/forums//thread/767949?answerId=812951022#812951022
+        //
         // https://github.com/element-hq/element-x-ios/issues/3041
         // https://forums.developer.apple.com/forums/thread/685268
         // https://stackoverflow.com/questions/71483732/webrtc-running-from-wkwebview-avaudiosession-development-roadblock
@@ -235,10 +247,8 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
     func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
         #if targetEnvironment(simulator)
         // This gets called for no reason on simulators, where CallKit
-        // isn't even supported. Ignore
-        return
-        #endif
-        
+        // isn't even supported, ignore it.
+        #else
         if let ongoingCallID {
             actionsSubject.send(.endCall(roomID: ongoingCallID.roomID))
         }
@@ -246,13 +256,12 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
         tearDownCallSession(sendEndCallAction: false)
         
         action.fulfill()
+        #endif
     }
     
     // MARK: - Private
     
-    func tearDownCallSession(sendEndCallAction: Bool = true) {
-        try? AVAudioSession.sharedInstance().setActive(false)
-        
+    private func tearDownCallSession(sendEndCallAction: Bool = true) {
         if sendEndCallAction, let ongoingCallID {
             let transaction = CXTransaction(action: CXEndCallAction(call: ongoingCallID.callKitID))
             callController.request(transaction) { error in
@@ -265,35 +274,35 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
         ongoingCallID = nil
     }
     
-    func observeIncomingCallRoomStateUpdates() async {
-        cancellables.removeAll()
+    private func observeIncomingCallRoomInfo() async {
+        incomingCallRoomInfoCancellable = nil
         
-        guard let clientProxy, let incomingCallID else {
+        guard let incomingCallID else {
+            MXLog.info("No incoming call to observe for.")
+            return
+        }
+        
+        guard let clientProxy else {
+            MXLog.warning("A ClientProxy is needed to fetch the room.")
             return
         }
         
         guard case let .joined(roomProxy) = await clientProxy.roomForIdentifier(incomingCallID.roomID) else {
+            MXLog.warning("Failed to fetch a joined room for the incoming call.")
             return
         }
         
         roomProxy.subscribeToRoomInfoUpdates()
         
-        // There's no incoming event for call cancellations so try to infer
-        // it from what we have. If the call is running before subscribing then wait
-        // for it to change to `false` otherwise wait for it to turn `true` before
-        // changing to `false`
-        let isCallOngoing = roomProxy.hasOngoingCall
-        
-        roomProxy
-            .actionsPublisher
-            .map { action -> (Bool, [String]) in
-                switch action {
-                case .roomInfoUpdate:
-                    return (roomProxy.hasOngoingCall, roomProxy.activeRoomCallParticipants)
-                }
-            }
+        incomingCallRoomInfoCancellable = roomProxy
+            .infoPublisher
+            .compactMap { ($0.hasRoomCall, $0.activeRoomCallParticipants) }
             .removeDuplicates { $0 == $1 }
-            .dropFirst(isCallOngoing ? 0 : 1)
+            .drop { hasRoomCall, _ in
+                // Filter all updates before hasRoomCall becomes `true`. Then we can correctly
+                // detect its change to `false` to stop ringing when the caller hangs up.
+                !hasRoomCall
+            }
             .sink { [weak self] hasOngoingCall, activeRoomCallParticipants in
                 guard let self else { return }
                 
@@ -302,17 +311,16 @@ class ElementCallService: NSObject, ElementCallServiceProtocol, PKPushRegistryDe
                 if !hasOngoingCall {
                     MXLog.info("Call cancelled by remote")
                     
-                    cancellables.removeAll()
+                    incomingCallRoomInfoCancellable = nil
                     endUnansweredCallTask?.cancel()
                     callProvider.reportCall(with: incomingCallID.callKitID, endedAt: nil, reason: .remoteEnded)
                 } else if participants.contains(roomProxy.ownUserID) {
-                    MXLog.info("Call anwered elsewhere")
+                    MXLog.info("Call answered elsewhere")
                     
-                    cancellables.removeAll()
+                    incomingCallRoomInfoCancellable = nil
                     endUnansweredCallTask?.cancel()
                     callProvider.reportCall(with: incomingCallID.callKitID, endedAt: nil, reason: .answeredElsewhere)
                 }
             }
-            .store(in: &cancellables)
     }
 }

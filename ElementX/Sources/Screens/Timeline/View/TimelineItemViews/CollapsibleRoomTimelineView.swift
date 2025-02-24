@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -52,8 +52,8 @@ struct CollapsibleRoomTimelineView: View {
 
 struct CollapsibleRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static let item = CollapsibleTimelineItem(items: [
-        SeparatorRoomTimelineItem(id: .init(timelineID: "First separator"), text: "This is a separator"),
-        SeparatorRoomTimelineItem(id: .init(timelineID: "Second separator"), text: "This is another separator")
+        SeparatorRoomTimelineItem(id: .virtual(uniqueID: .init("First separator")), timestamp: .mock),
+        SeparatorRoomTimelineItem(id: .virtual(uniqueID: .init("Second separator")), timestamp: .mock)
     ])
     
     static var previews: some View {

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -20,13 +20,13 @@ class BugReportUITests: XCTestCase {
         let app = Application.launch(.bugReport)
         
         // Type 4 characters and the send button should be disabled.
-        app.textViews[A11yIdentifiers.bugReportScreen.report].clearAndTypeText("Text")
+        app.textFields[A11yIdentifiers.bugReportScreen.report].clearAndTypeText("Text", app: app)
         XCTAssert(app.switches[A11yIdentifiers.bugReportScreen.sendLogs].isOn)
         XCTAssert(!app.switches[A11yIdentifiers.bugReportScreen.canContact].isOn)
         try await app.assertScreenshot(.bugReport, step: 2)
         
         // Type more than 4 characters and send the button should become enabled.
-        app.textViews[A11yIdentifiers.bugReportScreen.report].clearAndTypeText("Longer text")
+        app.textFields[A11yIdentifiers.bugReportScreen.report].clearAndTypeText("Longer text", app: app)
         XCTAssert(app.switches[A11yIdentifiers.bugReportScreen.sendLogs].isOn)
         XCTAssert(!app.switches[A11yIdentifiers.bugReportScreen.canContact].isOn)
         try await app.assertScreenshot(.bugReport, step: 3)

@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -23,17 +23,19 @@ struct RoomEventStringBuilder {
             sender.displayName ?? sender.id
         }
         
-        switch eventItemProxy.content.kind() {
+        switch eventItemProxy.content {
         case .unableToDecrypt(let encryptedMessage):
             let errorMessage = switch encryptedMessage {
-            case .megolmV1AesSha2(_, .membership): L10n.commonUnableToDecryptNoAccess
+            case .megolmV1AesSha2(_, .sentBeforeWeJoined): L10n.commonUnableToDecryptNoAccess
+            case .megolmV1AesSha2(_, .verificationViolation): L10n.commonUnableToDecryptVerificationViolation
+            case .megolmV1AesSha2(_, .unknownDevice), .megolmV1AesSha2(_, .unsignedDevice): L10n.commonUnableToDecryptInsecureDevice
             default: L10n.commonWaitingForDecryptionKey
             }
             return prefix(errorMessage, with: displayName)
         case .redactedMessage:
             return prefix(L10n.commonMessageRemoved, with: displayName)
         case .sticker:
-            if messageEventStringBuilder.prefix == .messageType {
+            if messageEventStringBuilder.destination == .pinnedEvent {
                 var string = AttributedString(L10n.commonSticker)
                 string.bold()
                 return string
@@ -41,18 +43,13 @@ struct RoomEventStringBuilder {
             return prefix(L10n.commonSticker, with: displayName)
         case .failedToParseMessageLike, .failedToParseState:
             return prefix(L10n.commonUnsupportedEvent, with: displayName)
-        case .message:
-            guard let messageContent = eventItemProxy.content.asMessage() else {
-                fatalError("Invalid message timeline item: \(eventItemProxy)")
-            }
-            
-            let messageType = messageContent.msgtype()
-            return messageEventStringBuilder.buildAttributedString(for: messageType, senderDisplayName: displayName)
+        case .message(let messageContent):
+            return messageEventStringBuilder.buildAttributedString(for: messageContent.msgType, senderDisplayName: displayName)
         case .state(_, let state):
             return stateEventStringBuilder
                 .buildString(for: state, sender: sender, isOutgoing: isOutgoing)
                 .map(AttributedString.init)
-        case .roomMembership(let userID, let displayName, let change):
+        case .roomMembership(let userID, let displayName, let change, _):
             return stateEventStringBuilder
                 .buildString(for: change, memberUserID: userID, memberDisplayName: displayName, sender: sender, isOutgoing: isOutgoing)
                 .map(AttributedString.init)
@@ -66,7 +63,7 @@ struct RoomEventStringBuilder {
                                           memberIsYou: isOutgoing)
                 .map(AttributedString.init)
         case .poll(let question, _, _, _, _, _, _):
-            if messageEventStringBuilder.prefix == .messageType {
+            if messageEventStringBuilder.destination == .pinnedEvent {
                 let questionPlaceholder = "{question}"
                 var finalString = AttributedString(L10n.commonPollSummary(questionPlaceholder))
                 finalString.bold()
@@ -76,7 +73,7 @@ struct RoomEventStringBuilder {
             }
             return prefix(L10n.commonPollSummary(question), with: displayName)
         case .callInvite:
-            return prefix(L10n.commonCallInvite, with: displayName)
+            return prefix(L10n.commonUnsupportedCall, with: displayName)
         case .callNotify:
             return prefix(L10n.commonCallStarted, with: displayName)
         }
@@ -99,7 +96,7 @@ struct RoomEventStringBuilder {
         RoomEventStringBuilder(stateEventStringBuilder: .init(userID: userID,
                                                               shouldDisambiguateDisplayNames: false),
                                messageEventStringBuilder: .init(attributedStringBuilder: AttributedStringBuilder(cacheKey: "pinnedEvents", mentionBuilder: PlainMentionBuilder()),
-                                                                prefix: .messageType),
+                                                                destination: .pinnedEvent),
                                shouldDisambiguateDisplayNames: false,
                                shouldPrefixSenderName: false)
     }

@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -13,12 +13,15 @@ struct CallInviteRoomTimelineView: View {
     let timelineItem: CallInviteRoomTimelineItem
     
     var body: some View {
-        Label(title: { Text(L10n.commonCallInvite) },
-              icon: { CompoundIcon(\.voiceCall, size: .medium, relativeTo: .compound.bodyMD) })
-            .font(.compound.bodyMD)
-            .foregroundColor(.compound.textSecondary)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding()
+        Label {
+            Text(L10n.screenRoomTimelineLegacyCall)
+        } icon: {
+            CompoundIcon(\.voiceCallSolid, size: .medium, relativeTo: .compound.bodyMD)
+        }
+        .font(.compound.bodyMD)
+        .foregroundColor(.compound.textSecondary)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding()
     }
 }
 
@@ -30,8 +33,8 @@ struct CallInviteRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     }
     
     static var body: some View {
-        CallInviteRoomTimelineView(timelineItem: .init(id: .random,
-                                                       timestamp: "Now",
+        CallInviteRoomTimelineView(timelineItem: .init(id: .randomEvent,
+                                                       timestamp: .mock,
                                                        isEditable: false,
                                                        canBeRepliedTo: false,
                                                        sender: .init(id: "Bob")))

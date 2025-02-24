@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -35,7 +35,7 @@ struct RoomNotificationSettingsScreen: View {
                     kind: .toggle($context.allowCustomSetting))
                 .accessibilityIdentifier(A11yIdentifiers.roomNotificationSettingsScreen.allowCustomSetting)
                 .disabled(context.viewState.notificationSettingsState.isLoading)
-                .onChange(of: context.allowCustomSetting) { _ in
+                .onChange(of: context.allowCustomSetting) {
                     context.send(viewAction: .changedAllowCustomSettings)
                 }
         } footer: {

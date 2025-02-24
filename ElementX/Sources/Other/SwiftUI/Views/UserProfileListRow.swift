@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -65,21 +65,21 @@ struct UserProfileCell_Previews: PreviewProvider, TestablePreview {
     
     static var previews: some View {
         Form {
-            UserProfileListRow(user: .mockAlice, membership: nil, mediaProvider: MockMediaProvider(),
+            UserProfileListRow(user: .mockAlice, membership: nil, mediaProvider: MediaProviderMock(configuration: .init()),
                                kind: .multiSelection(isSelected: true, action: action))
             
-            UserProfileListRow(user: .mockBob, membership: nil, mediaProvider: MockMediaProvider(),
+            UserProfileListRow(user: .mockBob, membership: nil, mediaProvider: MediaProviderMock(configuration: .init()),
                                kind: .multiSelection(isSelected: false, action: action))
             
-            UserProfileListRow(user: .mockCharlie, membership: .join, mediaProvider: MockMediaProvider(),
+            UserProfileListRow(user: .mockCharlie, membership: .join, mediaProvider: MediaProviderMock(configuration: .init()),
                                kind: .multiSelection(isSelected: true, action: action))
                 .disabled(true)
             
-            UserProfileListRow(user: .init(userID: "@someone:matrix.org"), membership: .join, mediaProvider: MockMediaProvider(),
+            UserProfileListRow(user: .init(userID: "@someone:matrix.org"), membership: .join, mediaProvider: MediaProviderMock(configuration: .init()),
                                kind: .multiSelection(isSelected: false, action: action))
                 .disabled(true)
             
-            UserProfileListRow(user: .init(userID: "@someone:matrix.org"), membership: nil, mediaProvider: MockMediaProvider(),
+            UserProfileListRow(user: .init(userID: "@someone:matrix.org"), membership: nil, mediaProvider: MediaProviderMock(configuration: .init()),
                                kind: .multiSelection(isSelected: false, action: action))
         }
         .compoundList()

@@ -1,13 +1,14 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
 
 struct LocationRoomTimelineView: View {
+    @Environment(\.timelineContext) private var context
     let timelineItem: LocationRoomTimelineItem
     
     var body: some View {
@@ -15,6 +16,9 @@ struct LocationRoomTimelineView: View {
             mainContent
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(accessibilityLabel)
+                .onTapGesture {
+                    context?.send(viewAction: .mediaTapped(itemID: timelineItem.id))
+                }
         }
     }
                                     
@@ -86,8 +90,8 @@ struct LocationRoomTimelineView_Previews: PreviewProvider, TestablePreview {
 
     @ViewBuilder
     static var states: some View {
-        LocationRoomTimelineView(timelineItem: .init(id: .random,
-                                                     timestamp: "Now",
+        LocationRoomTimelineView(timelineItem: .init(id: .randomEvent,
+                                                     timestamp: .mock,
                                                      isOutgoing: false,
                                                      isEditable: false,
                                                      canBeRepliedTo: true,
@@ -95,8 +99,8 @@ struct LocationRoomTimelineView_Previews: PreviewProvider, TestablePreview {
                                                      sender: .init(id: "Bob"),
                                                      content: .init(body: "Fallback geo uri description")))
 
-        LocationRoomTimelineView(timelineItem: .init(id: .random,
-                                                     timestamp: "Now",
+        LocationRoomTimelineView(timelineItem: .init(id: .randomEvent,
+                                                     timestamp: .mock,
                                                      isOutgoing: false,
                                                      isEditable: false,
                                                      canBeRepliedTo: true,
@@ -104,8 +108,8 @@ struct LocationRoomTimelineView_Previews: PreviewProvider, TestablePreview {
                                                      sender: .init(id: "Bob"),
                                                      content: .init(body: "Fallback geo uri description",
                                                                     geoURI: .init(latitude: 41.902782, longitude: 12.496366), description: "Location description description description description description description description description")))
-        LocationRoomTimelineView(timelineItem: .init(id: .random,
-                                                     timestamp: "Now",
+        LocationRoomTimelineView(timelineItem: .init(id: .randomEvent,
+                                                     timestamp: .mock,
                                                      isOutgoing: false,
                                                      isEditable: false,
                                                      canBeRepliedTo: true,

@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -35,10 +35,10 @@ struct MentionSuggestionItemView: View {
 }
 
 struct MentionSuggestionItemView_Previews: PreviewProvider, TestablePreview {
-    static let mockMediaProvider = MockMediaProvider()
+    static let mockMediaProvider = MediaProviderMock(configuration: .init())
     
     static var previews: some View {
-        MentionSuggestionItemView(mediaProvider: mockMediaProvider, item: .init(id: "test", displayName: "Test", avatarURL: URL.documentsDirectory, range: .init()))
-        MentionSuggestionItemView(mediaProvider: mockMediaProvider, item: .init(id: "test2", displayName: nil, avatarURL: nil, range: .init()))
+        MentionSuggestionItemView(mediaProvider: mockMediaProvider, item: .init(id: "test", displayName: "Test", avatarURL: .mockMXCUserAvatar, range: .init(), rawSuggestionText: ""))
+        MentionSuggestionItemView(mediaProvider: mockMediaProvider, item: .init(id: "test2", displayName: nil, avatarURL: nil, range: .init(), rawSuggestionText: ""))
     }
 }

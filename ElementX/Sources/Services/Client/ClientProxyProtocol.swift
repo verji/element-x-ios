@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -30,24 +30,18 @@ enum ClientProxyLoadingState {
 
 enum ClientProxyError: Error {
     case sdkError(Error)
+    case forbiddenAccess
     
     case invalidMedia
-    case invalidUserIDServerName
-    case failedUploadingMedia(Error, MatrixErrorCode)
+    case invalidServerName
+    case failedUploadingMedia(ErrorKind)
     case roomPreviewIsPrivate
+    case failedRetrievingUserIdentity
+    case failedResolvingRoomAlias
 }
 
 enum SlidingSyncConstants {
-    static let defaultTimelineLimit: UInt32 = 20
     static let maximumVisibleRangeSize = 30
-    static let defaultRequiredState = [
-        RequiredState(key: "m.room.name", value: ""),
-        RequiredState(key: "m.room.topic", value: ""),
-        RequiredState(key: "m.room.avatar", value: ""),
-        RequiredState(key: "m.room.canonical_alias", value: ""),
-        RequiredState(key: "m.room.join_rules", value: ""),
-        RequiredState(key: "m.room.pinned_events", value: "")
-    ]
 }
 
 /// This struct represents the configuration that we are using to register the application through Pusher to Sygnal
@@ -68,20 +62,6 @@ enum SessionVerificationState {
     case unverified
 }
 
-struct RoomPreviewDetails {
-    let roomID: String
-    let name: String?
-    let canonicalAlias: String?
-    let topic: String?
-    let avatarURL: URL?
-    let memberCount: UInt
-    let isHistoryWorldReadable: Bool
-    let isJoined: Bool
-    let isInvited: Bool
-    let isPublic: Bool
-    let canKnock: Bool
-}
-
 // sourcery: AutoMockable
 protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
     var actionsPublisher: AnyPublisher<ClientProxyAction, Never> { get }
@@ -96,8 +76,12 @@ protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
 
     var homeserver: String { get }
     
+    // TODO: This is a temporary value, in the future we should throw a migration error
+    // when decoding a session that contains a sliding sync proxy URL instead of restoring it.
+    var needsSlidingSyncMigration: Bool { get }
     var slidingSyncVersion: SlidingSyncVersion { get }
-    var availableSlidingSyncVersions: [SlidingSyncVersion] { get async }
+    
+    var canDeactivateAccount: Bool { get }
     
     var userIDServerName: String? { get }
     
@@ -112,6 +96,8 @@ protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
     
     var roomSummaryProvider: RoomSummaryProviderProtocol? { get }
     
+    var roomsToAwait: Set<String> { get set }
+    
     /// Used for listing rooms that shouldn't be affected by the main `roomSummaryProvider` filtering
     var alternateRoomSummaryProvider: RoomSummaryProviderProtocol? { get }
     
@@ -119,31 +105,42 @@ protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
     
     var secureBackupController: SecureBackupControllerProtocol { get }
     
+    var sessionVerificationController: SessionVerificationControllerProxyProtocol? { get }
+    
     func isOnlyDeviceLeft() async -> Result<Bool, ClientProxyError>
     
     func startSync()
 
     func stopSync()
+    func stopSync(completion: (() -> Void)?) // Hopefully this will become async once we get SE-0371.
     
     func accountURL(action: AccountManagementAction) async -> URL?
-    
-    func createDirectRoomIfNeeded(with userID: String, expectedRoomName: String?) async -> Result<(roomID: String, isNewRoom: Bool), ClientProxyError>
     
     func directRoomForUserID(_ userID: String) async -> Result<String?, ClientProxyError>
     
     func createDirectRoom(with userID: String, expectedRoomName: String?) async -> Result<String, ClientProxyError>
     
-    func createRoom(name: String, topic: String?, isRoomPrivate: Bool, userIDs: [String], avatarURL: URL?) async -> Result<String, ClientProxyError>
+    func createRoom(name: String,
+                    topic: String?,
+                    isRoomPrivate: Bool,
+                    isKnockingOnly: Bool,
+                    userIDs: [String],
+                    avatarURL: URL?,
+                    aliasLocalPart: String?) async -> Result<String, ClientProxyError>
     
     func joinRoom(_ roomID: String, via: [String]) async -> Result<Void, ClientProxyError>
     
     func joinRoomAlias(_ roomAlias: String) async -> Result<Void, ClientProxyError>
     
+    func knockRoom(_ roomID: String, via: [String], message: String?) async -> Result<Void, ClientProxyError>
+    
+    func knockRoomAlias(_ roomAlias: String, message: String?) async -> Result<Void, ClientProxyError>
+    
     func uploadMedia(_ media: MediaInfo) async -> Result<String, ClientProxyError>
     
     func roomForIdentifier(_ identifier: String) async -> RoomProxyType?
     
-    func roomPreviewForIdentifier(_ identifier: String, via: [String]) async -> Result<RoomPreviewDetails, ClientProxyError>
+    func roomPreviewForIdentifier(_ identifier: String, via: [String]) async -> Result<RoomPreviewProxyProtocol, ClientProxyError>
     
     @discardableResult func loadUserDisplayName() async -> Result<Void, ClientProxyError>
     
@@ -154,9 +151,9 @@ protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
     func setUserAvatar(media: MediaInfo) async -> Result<Void, ClientProxyError>
     
     func removeUserAvatar() async -> Result<Void, ClientProxyError>
-        
-    func sessionVerificationControllerProxy() async -> Result<SessionVerificationControllerProxyProtocol, ClientProxyError>
 
+    func deactivateAccount(password: String?, eraseData: Bool) async -> Result<Void, ClientProxyError>
+    
     func logout() async -> URL?
 
     func setPusher(with configuration: PusherConfiguration) async throws
@@ -168,6 +165,8 @@ protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
     func roomDirectorySearchProxy() -> RoomDirectorySearchProxyProtocol
     
     func resolveRoomAlias(_ alias: String) async -> Result<ResolvedRoomAlias, ClientProxyError>
+    
+    func isAliasAvailable(_ alias: String) async -> Result<Bool, ClientProxyError>
     
     func getElementWellKnown() async -> Result<ElementWellKnown?, ClientProxyError>
 
@@ -190,5 +189,9 @@ protocol ClientProxyProtocol: AnyObject, MediaLoaderProtocol {
     func ed25519Base64() async -> String?
     func curve25519Base64() async -> String?
     
+    func pinUserIdentity(_ userID: String) async -> Result<Void, ClientProxyError>
+    func withdrawUserIdentityVerification(_ userID: String) async -> Result<Void, ClientProxyError>
     func resetIdentity() async -> Result<IdentityResetHandle?, ClientProxyError>
+    
+    func userIdentity(for userID: String) async -> Result<UserIdentityProxyProtocol?, ClientProxyError>
 }

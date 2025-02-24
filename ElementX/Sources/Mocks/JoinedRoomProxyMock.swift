@@ -1,12 +1,13 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
 import Foundation
+import MatrixRustSDK
 
 enum RoomProxyMockError: Error {
     case generic
@@ -24,11 +25,14 @@ struct JoinedRoomProxyMockConfiguration {
     var isEncrypted = true
     var hasOngoingCall = true
     var canonicalAlias: String?
+    var alternativeAliases: [String] = []
     var pinnedEventIDs: Set<String> = []
     
     var timelineStartReached = false
     
     var members: [RoomMemberProxyMock] = .allMembers
+    var heroes: [RoomMemberProxyMock] = []
+    var knockRequestsState: KnockRequestsState = .loaded([])
     var ownUserID = RoomMemberProxyMock.mockMe.userID
     var inviter: RoomMemberProxyProtocol?
     
@@ -38,6 +42,8 @@ struct JoinedRoomProxyMockConfiguration {
     var canUserPin = true
     
     var shouldUseAutoUpdatingTimeline = false
+    var joinRule: JoinRule?
+    var isVisibleInPublicDirectory = false
 }
 
 extension JoinedRoomProxyMock {
@@ -46,46 +52,20 @@ extension JoinedRoomProxyMock {
         self.init()
 
         id = configuration.id
-        name = configuration.name
-        topic = configuration.topic
-        avatar = .room(id: configuration.id, name: configuration.name, avatarURL: configuration.avatarURL) // Note: This doesn't replicate the real proxy logic.
-        avatarURL = configuration.avatarURL
-        isDirect = configuration.isDirect
-        isSpace = configuration.isSpace
-        isPublic = configuration.isPublic
         isEncrypted = configuration.isEncrypted
-        hasOngoingCall = configuration.hasOngoingCall
-        canonicalAlias = configuration.canonicalAlias
         
-        underlyingPinnedEventIDs = configuration.pinnedEventIDs
-        
-        let timeline = TimelineProxyMock()
-        timeline.sendMessageEventContentReturnValue = .success(())
-        timeline.paginateBackwardsRequestSizeReturnValue = .success(())
-        timeline.paginateForwardsRequestSizeReturnValue = .success(())
-        timeline.sendReadReceiptForTypeReturnValue = .success(())
-        
-        if configuration.shouldUseAutoUpdatingTimeline {
-            timeline.underlyingTimelineProvider = AutoUpdatingRoomTimelineProviderMock()
-        } else {
-            let timelineProvider = RoomTimelineProviderMock()
-            timelineProvider.paginationState = .init(backward: configuration.timelineStartReached ? .timelineEndReached : .idle, forward: .timelineEndReached)
-            timelineProvider.underlyingMembershipChangePublisher = PassthroughSubject().eraseToAnyPublisher()
-            timeline.underlyingTimelineProvider = timelineProvider
-        }
-        
-        self.timeline = timeline
+        timeline = TimelineProxyMock(.init(isAutoUpdating: configuration.shouldUseAutoUpdatingTimeline,
+                                           timelineStartReached: configuration.timelineStartReached))
 
         ownUserID = configuration.ownUserID
         
+        infoPublisher = CurrentValueSubject(.init(roomInfo: .init(configuration))).asCurrentValuePublisher()
         membersPublisher = CurrentValueSubject(configuration.members).asCurrentValuePublisher()
+        knockRequestsStatePublisher = CurrentValueSubject(configuration.knockRequestsState).asCurrentValuePublisher()
         typingMembersPublisher = CurrentValueSubject([]).asCurrentValuePublisher()
-        
-        joinedMembersCount = configuration.members.filter { $0.membership == .join }.count
-        activeMembersCount = configuration.members.filter { $0.membership == .join || $0.membership == .invite }.count
+        identityStatusChangesPublisher = CurrentValueSubject([]).asCurrentValuePublisher()
 
         updateMembersClosure = { }
-        underlyingActionsPublisher = Empty(completeImmediately: false).eraseToAnyPublisher()
         setNameClosure = { _ in .success(()) }
         setTopicClosure = { _ in .success(()) }
         getMemberUserIDClosure = { [weak self] userID in
@@ -94,10 +74,12 @@ extension JoinedRoomProxyMock {
             }
             return .success(member)
         }
+        
+        ignoreDeviceTrustAndResendDevicesSendHandleReturnValue = .success(())
+        withdrawVerificationAndResendUserIDsSendHandleReturnValue = .success(())
 
         flagAsUnreadReturnValue = .success(())
         markAsReadReceiptTypeReturnValue = .success(())
-        underlyingIsFavourite = false
         flagAsFavouriteReturnValue = .success(())
         
         powerLevelsReturnValue = .success(.mock)
@@ -115,7 +97,7 @@ extension JoinedRoomProxyMock {
         }
         canUserInviteUserIDReturnValue = .success(configuration.canUserInvite)
         canUserRedactOtherUserIDReturnValue = .success(false)
-        canUserRedactOwnUserIDReturnValue = .success(false)
+        canUserRedactOwnUserIDReturnValue = .success(true)
         canUserKickUserIDClosure = { [weak self] userID in
             .success(self?.membersPublisher.value.first { $0.userID == userID }?.role ?? .user != .user)
         }
@@ -134,7 +116,7 @@ extension JoinedRoomProxyMock {
         widgetDriver.underlyingMessagePublisher = .init()
         widgetDriver.underlyingActions = PassthroughSubject().eraseToAnyPublisher()
         
-        guard let url = URL(string: "https://call.element.dev/\(UUID().uuidString)#?appPrompt=false") else {
+        guard let url = URL(string: "https://call.element.io/\(UUID().uuidString)#?appPrompt=false") else {
             fatalError()
         }
         
@@ -147,5 +129,61 @@ extension JoinedRoomProxyMock {
         matrixToEventPermalinkReturnValue = .success(.homeDirectory)
         loadDraftReturnValue = .success(nil)
         clearDraftReturnValue = .success(())
+        sendTypingNotificationIsTypingReturnValue = .success(())
+        isVisibleInRoomDirectoryReturnValue = .success(configuration.isVisibleInPublicDirectory)
+    }
+}
+
+extension RoomInfo {
+    @MainActor init(_ configuration: JoinedRoomProxyMockConfiguration) {
+        self.init(id: configuration.id,
+                  creator: nil,
+                  displayName: configuration.name,
+                  rawName: configuration.name,
+                  topic: configuration.topic,
+                  avatarUrl: configuration.avatarURL?.absoluteString,
+                  isDirect: configuration.isDirect,
+                  isPublic: configuration.isPublic,
+                  isSpace: configuration.isSpace,
+                  isTombstoned: false,
+                  isFavourite: false,
+                  canonicalAlias: configuration.canonicalAlias,
+                  alternativeAliases: configuration.alternativeAliases,
+                  membership: .joined,
+                  inviter: configuration.inviter.map { RoomMember(userId: $0.userID,
+                                                                  displayName: $0.displayName,
+                                                                  avatarUrl: $0.avatarURL?.absoluteString,
+                                                                  membership: $0.membership,
+                                                                  isNameAmbiguous: false,
+                                                                  powerLevel: Int64($0.powerLevel),
+                                                                  normalizedPowerLevel: Int64($0.powerLevel),
+                                                                  isIgnored: $0.isIgnored,
+                                                                  suggestedRoleForPowerLevel: $0.role,
+                                                                  membershipChangeReason: $0.membershipChangeReason) },
+                  heroes: configuration.heroes.map(RoomHero.init),
+                  activeMembersCount: UInt64(configuration.members.filter { $0.membership == .join || $0.membership == .invite }.count),
+                  invitedMembersCount: UInt64(configuration.members.filter { $0.membership == .invite }.count),
+                  joinedMembersCount: UInt64(configuration.members.filter { $0.membership == .join }.count),
+                  userPowerLevels: [:],
+                  highlightCount: 0,
+                  notificationCount: 0,
+                  cachedUserDefinedNotificationMode: .allMessages,
+                  hasRoomCall: configuration.hasOngoingCall,
+                  activeRoomCallParticipants: [],
+                  isMarkedUnread: false,
+                  numUnreadMessages: 0,
+                  numUnreadNotifications: 0,
+                  numUnreadMentions: 0,
+                  pinnedEventIds: Array(configuration.pinnedEventIDs),
+                  joinRule: configuration.joinRule,
+                  historyVisibility: .shared)
+    }
+}
+
+private extension RoomHero {
+    init(from memberProxy: RoomMemberProxyMock) {
+        self.init(userId: memberProxy.userID,
+                  displayName: memberProxy.displayName,
+                  avatarUrl: memberProxy.avatarURL?.absoluteString)
     }
 }

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -40,8 +40,18 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         
         try await deferred.fulfill()
         
-        let sortedMembers: [RoomMemberProxyMock] = [.mockAdmin, .mockModerator, .mockAlice, .mockDan]
-        XCTAssertEqual(viewModel.state.visibleJoinedMembers, sortedMembers.map(RoomMemberDetails.init))
+        let sortedMembers: [RoomMemberListScreenEntry] = [
+            .init(member: .init(withProxy: RoomMemberProxyMock.mockAdmin),
+                  verificationState: .notVerified),
+            .init(member: .init(withProxy: RoomMemberProxyMock.mockModerator),
+                  verificationState: .notVerified),
+            .init(member: .init(withProxy: RoomMemberProxyMock.mockAlice),
+                  verificationState: .notVerified),
+            .init(member: .init(withProxy: RoomMemberProxyMock.mockDan),
+                  verificationState: .notVerified)
+        ]
+        
+        XCTAssertEqual(viewModel.state.visibleJoinedMembers, sortedMembers)
     }
     
     func testSearch() async throws {
@@ -125,7 +135,7 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         
         // When tapping on another user in the list.
         let memberDetailsAction = deferFulfillment(viewModel.actions) { $0.isSelectMember }
-        guard let user = viewModel.state.visibleJoinedMembers.first(where: { $0.role == .user && $0.id != RoomMemberProxyMock.mockMe.userID }) else {
+        guard let user = viewModel.state.visibleJoinedMembers.first(where: { $0.member.role == .user && $0.member.id != RoomMemberProxyMock.mockMe.userID })?.member else {
             XCTFail("Expected to find a regular user.")
             return
         }
@@ -139,13 +149,13 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
     func testSelectUserAsAdmin() async throws {
         // Given the room list viewed as an admin.
         setup(with: .allMembersAsAdmin)
-        var deferred = deferFulfillment(context.$viewState) { !$0.visibleInvitedMembers.isEmpty }
+        var deferred = deferFulfillment(context.$viewState) { !$0.visibleInvitedMembers.isEmpty && $0.canKickUsers && $0.canBanUsers }
         try await deferred.fulfill()
         XCTAssertNil(context.memberToManage)
         
         // When tapping on a user in the list.
         deferred = deferFulfillment(context.$viewState) { $0.bindings.memberToManage != nil }
-        guard let user = viewModel.state.visibleJoinedMembers.first(where: { $0.role == .user && $0.id != RoomMemberProxyMock.mockMe.userID }) else {
+        guard let user = viewModel.state.visibleJoinedMembers.first(where: { $0.member.role == .user && $0.member.id != RoomMemberProxyMock.mockMe.userID })?.member else {
             XCTFail("Expected to find a regular user.")
             return
         }
@@ -160,13 +170,13 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
     func testSelectModeratorAsAdmin() async throws {
         // Given the room list viewed as an admin.
         setup(with: .allMembersAsAdmin)
-        var deferred = deferFulfillment(context.$viewState) { !$0.visibleInvitedMembers.isEmpty }
+        var deferred = deferFulfillment(context.$viewState) { !$0.visibleInvitedMembers.isEmpty && $0.canKickUsers && $0.canBanUsers }
         try await deferred.fulfill()
         XCTAssertNil(context.memberToManage)
         
         // When tapping on a moderator in the list.
         deferred = deferFulfillment(context.$viewState) { $0.bindings.memberToManage != nil }
-        guard let moderator = viewModel.state.visibleJoinedMembers.first(where: { $0.role == .moderator }) else {
+        guard let moderator = viewModel.state.visibleJoinedMembers.first(where: { $0.member.role == .moderator })?.member else {
             XCTFail("Expected to find a moderator.")
             return
         }
@@ -186,7 +196,7 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         
         // When tapping on another administrator in the list.
         let memberDetailsAction = deferFulfillment(viewModel.actions) { $0.isSelectMember }
-        guard let admin = viewModel.state.visibleJoinedMembers.first(where: { $0.role == .administrator && $0.id != RoomMemberProxyMock.mockMe.userID }) else {
+        guard let admin = viewModel.state.visibleJoinedMembers.first(where: { $0.member.role == .administrator && $0.member.id != RoomMemberProxyMock.mockMe.userID })?.member else {
             XCTFail("Expected to find another admin.")
             return
         }
@@ -205,7 +215,7 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         
         // When tapping on yourself in the list.
         let memberDetailsAction = deferFulfillment(viewModel.actions) { $0.isSelectMember }
-        guard let ownMember = viewModel.state.visibleJoinedMembers.first(where: { $0.id == RoomMemberProxyMock.mockMe.userID }) else {
+        guard let ownMember = viewModel.state.visibleJoinedMembers.first(where: { $0.member.id == RoomMemberProxyMock.mockMe.userID })?.member else {
             XCTFail("Expected to find own user admin.")
             return
         }
@@ -225,7 +235,7 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         
         // When tapping on a banned member in the list.
         deferred = deferFulfillment(context.$viewState) { $0.bindings.alertInfo != nil }
-        guard let bannedMember = viewModel.state.visibleBannedMembers.first else {
+        guard let bannedMember = viewModel.state.visibleBannedMembers.first?.member else {
             XCTFail("Expected to find a banned user.")
             return
         }
@@ -242,7 +252,7 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         let deferred = deferFulfillment(context.$viewState) { !$0.visibleJoinedMembers.isEmpty }
         try await deferred.fulfill()
         
-        context.send(viewAction: .kickMember(viewModel.state.visibleJoinedMembers[0]))
+        context.send(viewAction: .kickMember(viewModel.state.visibleJoinedMembers[0].member))
         
         // Calling the mock won't actually change any view state, so sleep instead.
         try await Task.sleep(for: .milliseconds(100))
@@ -255,7 +265,7 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         let deferred = deferFulfillment(context.$viewState) { !$0.visibleJoinedMembers.isEmpty }
         try await deferred.fulfill()
         
-        context.send(viewAction: .banMember(viewModel.state.visibleJoinedMembers[0]))
+        context.send(viewAction: .banMember(viewModel.state.visibleJoinedMembers[0].member))
         
         // Calling the mock won't actually change any view state, so sleep instead.
         try await Task.sleep(for: .milliseconds(100))
@@ -268,7 +278,7 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
         let deferred = deferFulfillment(context.$viewState) { !$0.visibleJoinedMembers.isEmpty }
         try await deferred.fulfill()
         
-        context.send(viewAction: .unbanMember(viewModel.state.visibleJoinedMembers[0]))
+        context.send(viewAction: .unbanMember(viewModel.state.visibleJoinedMembers[0].member))
         
         // Calling the mock won't actually change any view state, so sleep instead.
         try await Task.sleep(for: .milliseconds(100))
@@ -278,8 +288,9 @@ class RoomMembersListScreenViewModelTests: XCTestCase {
     
     private func setup(with members: [RoomMemberProxyMock]) {
         roomProxy = JoinedRoomProxyMock(.init(name: "test", members: members))
-        viewModel = .init(roomProxy: roomProxy,
-                          mediaProvider: MockMediaProvider(),
+        viewModel = .init(clientProxy: ClientProxyMock(.init()),
+                          roomProxy: roomProxy,
+                          mediaProvider: MediaProviderMock(configuration: .init()),
                           userIndicatorController: ServiceLocator.shared.userIndicatorController,
                           analytics: ServiceLocator.shared.analytics)
     }

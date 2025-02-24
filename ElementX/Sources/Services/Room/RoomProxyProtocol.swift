@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -15,64 +15,64 @@ enum RoomProxyError: Error {
     case invalidURL
     case invalidMedia
     case eventNotFound
+    case missingTransactionID
 }
 
 enum RoomProxyType {
     case joined(JoinedRoomProxyProtocol)
     case invited(InvitedRoomProxyProtocol)
+    case knocked(KnockedRoomProxyProtocol)
+    case banned(BannedRoomProxyProtocol)
     case left
 }
 
 // sourcery: AutoMockable
 protocol RoomProxyProtocol {
     var id: String { get }
-    var canonicalAlias: String? { get }
-    
     var ownUserID: String { get }
-    
-    var name: String? { get }
-    var topic: String? { get }
-    
-    /// The room's avatar info for use in a ``RoomAvatarImage``.
-    var avatar: RoomAvatar { get }
-    /// The room's avatar URL. Use this for editing and favour ``avatar`` for display.
-    var avatarURL: URL? { get }
-    
-    var isPublic: Bool { get }
-    var isDirect: Bool { get }
-    var isSpace: Bool { get }
-    
-    var joinedMembersCount: Int { get }
-    
-    var activeMembersCount: Int { get }
 }
 
 // sourcery: AutoMockable
 protocol InvitedRoomProxyProtocol: RoomProxyProtocol {
-    var inviter: RoomMemberProxyProtocol? { get async }
-    
+    var info: BaseRoomInfoProxyProtocol { get }
+    var inviter: RoomMemberProxyProtocol? { get }
     func rejectInvitation() async -> Result<Void, RoomProxyError>
-    func acceptInvitation() async -> Result<Void, RoomProxyError>
 }
 
-enum JoinedRoomProxyAction {
+// sourcery: AutoMockable
+protocol KnockedRoomProxyProtocol: RoomProxyProtocol {
+    var info: BaseRoomInfoProxyProtocol { get }
+    func cancelKnock() async -> Result<Void, RoomProxyError>
+}
+
+// sourcery: AutoMockable
+protocol BannedRoomProxyProtocol: RoomProxyProtocol {
+    var info: BaseRoomInfoProxyProtocol { get }
+    func forgetRoom() async -> Result<Void, RoomProxyError>
+}
+
+enum JoinedRoomProxyAction: Equatable {
     case roomInfoUpdate
+}
+
+enum KnockRequestsState {
+    case loading
+    case loaded([KnockRequestProxyProtocol])
 }
 
 // sourcery: AutoMockable
 protocol JoinedRoomProxyProtocol: RoomProxyProtocol {
     var isEncrypted: Bool { get }
-    var isFavourite: Bool { get async }
-    var pinnedEventIDs: Set<String> { get async }
     
-    var hasOngoingCall: Bool { get }
-    var activeRoomCallParticipants: [String] { get }
+    var infoPublisher: CurrentValuePublisher<RoomInfoProxy, Never> { get }
 
     var membersPublisher: CurrentValuePublisher<[RoomMemberProxyProtocol], Never> { get }
     
     var typingMembersPublisher: CurrentValuePublisher<[String], Never> { get }
     
-    var actionsPublisher: AnyPublisher<JoinedRoomProxyAction, Never> { get }
+    var identityStatusChangesPublisher: CurrentValuePublisher<[IdentityStatusChange], Never> { get }
+    
+    var knockRequestsStatePublisher: CurrentValuePublisher<KnockRequestsState, Never> { get }
     
     var timeline: TimelineProxyProtocol { get }
     
@@ -83,6 +83,12 @@ protocol JoinedRoomProxyProtocol: RoomProxyProtocol {
     func subscribeToRoomInfoUpdates()
     
     func timelineFocusedOnEvent(eventID: String, numberOfEvents: UInt16) async -> Result<TimelineProxyProtocol, RoomProxyError>
+    
+    func messageFilteredTimeline(focus: TimelineFocus,
+                                 allowedMessageTypes: [TimelineAllowedMessageType],
+                                 presentation: TimelineKind.MediaPresentation) async -> Result<TimelineProxyProtocol, RoomProxyError>
+    
+    func enableEncryption() async -> Result<Void, RoomProxyError>
     
     func redact(_ eventID: String) async -> Result<Void, RoomProxyError>
     
@@ -110,6 +116,25 @@ protocol JoinedRoomProxyProtocol: RoomProxyProtocol {
     
     /// https://spec.matrix.org/v1.9/client-server-api/#typing-notifications
     @discardableResult func sendTypingNotification(isTyping: Bool) async -> Result<Void, RoomProxyError>
+    
+    func ignoreDeviceTrustAndResend(devices: [String: [String]], sendHandle: SendHandleProxy) async -> Result<Void, RoomProxyError>
+    
+    func withdrawVerificationAndResend(userIDs: [String], sendHandle: SendHandleProxy) async -> Result<Void, RoomProxyError>
+    
+    // MARK: - Privacy settings
+    
+    func updateJoinRule(_ rule: JoinRule) async -> Result<Void, RoomProxyError>
+    func updateHistoryVisibility(_ visibility: RoomHistoryVisibility) async -> Result<Void, RoomProxyError>
+    
+    func isVisibleInRoomDirectory() async -> Result<Bool, RoomProxyError>
+    func updateRoomDirectoryVisibility(_ visibility: RoomVisibility) async -> Result<Void, RoomProxyError>
+    
+    // MARK: - Canonical Alias
+    
+    func updateCanonicalAlias(_ alias: String?, altAliases: [String]) async -> Result<Void, RoomProxyError>
+    
+    func publishRoomAliasInRoomDirectory(_ alias: String) async -> Result<Bool, RoomProxyError>
+    func removeRoomAliasFromRoomDirectory(_ alias: String) async -> Result<Bool, RoomProxyError>
     
     // MARK: - Room Flags
     
@@ -161,21 +186,16 @@ protocol JoinedRoomProxyProtocol: RoomProxyProtocol {
 extension JoinedRoomProxyProtocol {
     var details: RoomDetails {
         RoomDetails(id: id,
-                    name: name,
-                    avatar: avatar,
-                    canonicalAlias: canonicalAlias,
+                    name: infoPublisher.value.displayName,
+                    avatar: infoPublisher.value.avatar,
+                    canonicalAlias: infoPublisher.value.canonicalAlias,
                     isEncrypted: isEncrypted,
-                    isPublic: isPublic)
-    }
-        
-    // Avoids to duplicate the same logic around in the app
-    // Probably this should be done in rust.
-    var roomTitle: String {
-        name ?? "Unknown room 💥"
+                    isPublic: infoPublisher.value.isPublic,
+                    isDirect: infoPublisher.value.isDirect)
     }
     
-    var isEncryptedOneToOneRoom: Bool {
-        isDirect && isEncrypted && activeMembersCount <= 2
+    var isDirectOneToOneRoom: Bool {
+        infoPublisher.value.isDirect && infoPublisher.value.activeMembersCount <= 2
     }
 
     func members() async -> [RoomMemberProxyProtocol]? {

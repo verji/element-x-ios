@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -25,11 +25,7 @@ private struct PreviewView: UIViewControllerRepresentable {
         previewController.dataSource = context.coordinator
         previewController.delegate = context.coordinator
         
-        if ProcessInfo.processInfo.isiOSAppOnMac {
-            return previewController
-        } else {
-            return UINavigationController(rootViewController: previewController)
-        }
+        return UINavigationController(rootViewController: previewController)
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) { }

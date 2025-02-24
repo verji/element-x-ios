@@ -1,40 +1,39 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
 import SwiftUI
 
 struct StickerRoomTimelineView: View {
-    @EnvironmentObject private var context: TimelineViewModel.Context
+    @Environment(\.timelineContext) private var context
     let timelineItem: StickerRoomTimelineItem
     
     var body: some View {
         TimelineStyler(timelineItem: timelineItem) {
-            LoadableImage(url: timelineItem.imageURL,
+            LoadableImage(mediaSource: timelineItem.imageInfo.source,
+                          mediaType: .timelineItem(uniqueID: timelineItem.id.uniqueID),
                           blurhash: timelineItem.blurhash,
-                          mediaProvider: context.mediaProvider) {
+                          size: timelineItem.imageInfo.size,
+                          mediaProvider: context?.mediaProvider) {
                 placeholder
             }
-            .timelineMediaFrame(height: timelineItem.height,
-                                aspectRatio: timelineItem.aspectRatio)
+            .timelineMediaFrame(imageInfo: timelineItem.imageInfo)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(L10n.commonSticker), \(timelineItem.body)")
+            .onTapGesture {
+                context?.send(viewAction: .mediaTapped(itemID: timelineItem.id))
+            }
         }
     }
     
     private var placeholder: some View {
-        ZStack {
-            Rectangle()
-                .foregroundColor(timelineItem.isOutgoing ? .compound._bgBubbleOutgoing : .compound._bgBubbleIncoming)
-                .opacity(0.3)
-            
-            ProgressView(L10n.commonLoading)
-                .frame(maxWidth: .infinity)
-        }
+        Rectangle()
+            .foregroundColor(timelineItem.isOutgoing ? .compound._bgBubbleOutgoing : .compound._bgBubbleIncoming)
+            .opacity(0.3)
     }
 }
 
@@ -42,39 +41,27 @@ struct StickerRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static let viewModel = TimelineViewModel.mock
     
     static var previews: some View {
-        body.environmentObject(viewModel.context)
-    }
-    
-    static var body: some View {
         VStack(spacing: 20.0) {
-            StickerRoomTimelineView(timelineItem: StickerRoomTimelineItem(id: .random,
+            StickerRoomTimelineView(timelineItem: StickerRoomTimelineItem(id: .randomEvent,
                                                                           body: "Some image",
-                                                                          timestamp: "Now",
+                                                                          timestamp: .mock,
                                                                           isOutgoing: false,
                                                                           isEditable: false,
                                                                           canBeRepliedTo: true,
                                                                           sender: .init(id: "Bob"),
-                                                                          imageURL: URL.picturesDirectory))
+                                                                          imageInfo: .mockImage))
             
-            StickerRoomTimelineView(timelineItem: StickerRoomTimelineItem(id: .random,
-                                                                          body: "Some other image",
-                                                                          timestamp: "Now",
-                                                                          isOutgoing: false,
-                                                                          isEditable: false,
-                                                                          canBeRepliedTo: true,
-                                                                          sender: .init(id: "Bob"),
-                                                                          imageURL: URL.picturesDirectory))
-            
-            StickerRoomTimelineView(timelineItem: StickerRoomTimelineItem(id: .random,
+            StickerRoomTimelineView(timelineItem: StickerRoomTimelineItem(id: .randomEvent,
                                                                           body: "Blurhashed image",
-                                                                          timestamp: "Now",
+                                                                          timestamp: .mock,
                                                                           isOutgoing: false,
                                                                           isEditable: false,
                                                                           canBeRepliedTo: true,
                                                                           sender: .init(id: "Bob"),
-                                                                          imageURL: URL.picturesDirectory,
-                                                                          aspectRatio: 0.7,
+                                                                          imageInfo: .mockImage,
                                                                           blurhash: "L%KUc%kqS$RP?Ks,WEf8OlrqaekW"))
         }
+        .environmentObject(viewModel.context)
+        .environment(\.timelineContext, viewModel.context)
     }
 }

@@ -1,15 +1,18 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
+
+import Compound
 import SwiftUI
 
 struct MessageComposerTextField: View {
     let placeholder: String
     @Binding var text: NSAttributedString
     @Binding var presendCallback: (() -> Void)?
+    @Binding var selectedRange: NSRange
 
     let maxHeight: CGFloat
     let keyHandler: GenericKeyHandler
@@ -18,6 +21,7 @@ struct MessageComposerTextField: View {
     var body: some View {
         UITextViewWrapper(text: $text,
                           presendCallback: $presendCallback,
+                          selectedRange: $selectedRange,
                           maxHeight: maxHeight,
                           keyHandler: keyHandler,
                           pasteHandler: pasteHandler)
@@ -52,6 +56,7 @@ private struct UITextViewWrapper: UIViewRepresentable {
 
     @Binding var text: NSAttributedString
     @Binding var presendCallback: (() -> Void)?
+    @Binding var selectedRange: NSRange
 
     let maxHeight: CGFloat
 
@@ -77,6 +82,12 @@ private struct UITextViewWrapper: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0.0
         textView.textContainerInset = .zero
         textView.keyboardType = .default
+        
+        // AutoCorrection doesn't work properly when running on the Mac
+        // https://github.com/element-hq/element-x-ios/issues/1786
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            textView.autocorrectionType = .no
+        }
 
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         
@@ -96,11 +107,16 @@ private struct UITextViewWrapper: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: UIViewRepresentableContext<UITextViewWrapper>) {
         // Prevent the textView from inheriting attributes from mention pills
         textView.typingAttributes = [.font: font,
-                                     .foregroundColor: UIColor(.compound.textPrimary)]
+                                     .foregroundColor: UIColor.compound.textPrimary]
         
         if textView.attributedText != text {
             // Remember the selection if only the attributes have changed.
             let selection = textView.attributedText.string == text.string ? textView.selectedTextRange : nil
+            
+            // Fixes pill views not loading on the first attempt on iOS 18
+            // because the textContainers's superview comes in as nil
+            // https://github.com/element-hq/element-x-ios/issues/3369
+            _ = textView.layoutManager
             
             textView.attributedText = text
             
@@ -122,12 +138,15 @@ private struct UITextViewWrapper: UIViewRepresentable {
                 // moves the caret back to the bottom of the composer.
                 // https://github.com/element-hq/element-x-ios/issues/3104
                 textView.selectedTextRange = selection
+            } else {
+                textView.selectedRange = selectedRange
             }
         }
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text,
+                    selectedRange: $selectedRange,
                     maxHeight: maxHeight,
                     keyHandler: keyHandler,
                     pasteHandler: pasteHandler)
@@ -135,6 +154,7 @@ private struct UITextViewWrapper: UIViewRepresentable {
 
     final class Coordinator: NSObject, UITextViewDelegate, ElementTextViewDelegate {
         private var text: Binding<NSAttributedString>
+        private var selectedRange: Binding<NSRange>
 
         private let maxHeight: CGFloat
 
@@ -142,10 +162,12 @@ private struct UITextViewWrapper: UIViewRepresentable {
         private let pasteHandler: PasteHandler
 
         init(text: Binding<NSAttributedString>,
+             selectedRange: Binding<NSRange>,
              maxHeight: CGFloat,
              keyHandler: @escaping GenericKeyHandler,
              pasteHandler: @escaping PasteHandler) {
             self.text = text
+            self.selectedRange = selectedRange
             self.maxHeight = maxHeight
             self.keyHandler = keyHandler
             self.pasteHandler = pasteHandler
@@ -165,6 +187,14 @@ private struct UITextViewWrapper: UIViewRepresentable {
 
         func textView(_ textView: UITextView, didReceivePasteWith provider: NSItemProvider) {
             pasteHandler(provider)
+        }
+        
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            DispatchQueue.main.async {
+                if self.selectedRange.wrappedValue != textView.selectedRange {
+                    self.selectedRange.wrappedValue = textView.selectedRange
+                }
+            }
         }
     }
 }
@@ -189,8 +219,11 @@ private class ElementTextView: UITextView, PillAttachmentViewProviderDelegate {
         
         super.init(frame: .zero, textContainer: nil)
         
-        presendCallback.wrappedValue = { [weak self] in
-            self?.acceptCurrentSuggestion()
+        // Avoid `Publishing changes from within view update` warnings
+        DispatchQueue.main.async {
+            presendCallback.wrappedValue = { [weak self] in
+                self?.acceptCurrentSuggestion()
+            }
         }
     }
     
@@ -308,13 +341,14 @@ struct MessageComposerTextField_Previews: PreviewProvider, TestablePreview {
 
         init(text: String) {
             _text = .init(initialValue: .init(string: text, attributes: [.font: UIFont.preferredFont(forTextStyle: .body),
-                                                                         .foregroundColor: UIColor(.compound.textPrimary)]))
+                                                                         .foregroundColor: UIColor.compound.textPrimary]))
         }
 
         var body: some View {
             MessageComposerTextField(placeholder: "Placeholder",
                                      text: $text,
                                      presendCallback: .constant(nil),
+                                     selectedRange: .constant(NSRange(location: 0, length: 0)),
                                      maxHeight: 300,
                                      keyHandler: { _ in },
                                      pasteHandler: { _ in })

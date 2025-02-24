@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -20,7 +20,7 @@ struct PINTextField: View {
             .textFieldStyle(PINTextFieldStyle(pinCode: pinCode, isSecure: isSecure, maxLength: maxLength, size: size))
             .keyboardType(.numberPad)
             .accessibilityIdentifier(A11yIdentifiers.appLockSetupPINScreen.textField)
-            .onChange(of: pinCode) { newValue in
+            .onChange(of: pinCode) { _, newValue in
                 let sanitized = sanitize(newValue)
                 if sanitized != newValue {
                     MXLog.warning("PIN code input sanitized.")

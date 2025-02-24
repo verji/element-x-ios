@@ -229,9 +229,11 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
 			<key>one</key>
-			<string>%1$d Pinned message</string>
-			<key>other</key>
-			<string>%1$d Pinned messages</string>
+			<string>%1$d przypięta wiadomość</string>
+			<key>few</key>
+			<string>%1$d przypięte wiadomości</string>
+			<key>many</key>
+			<string>%1$d przypiętych wiadomości</string>
 		</dict>
 	</dict>
 	<key>screen_room_member_list_header_title</key>
@@ -250,6 +252,24 @@
 			<string>%1$d osoby</string>
 			<key>many</key>
 			<string>%1$d osób</string>
+		</dict>
+	</dict>
+	<key>screen_room_multiple_knock_requests_title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@COUNT@</string>
+		<key>COUNT</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%1$@ +%2$d inny chce dołączyć do pokoju</string>
+			<key>few</key>
+			<string>%1$@ +%2$d innych chce dołączyć do pokoju</string>
+			<key>many</key>
+			<string>%1$@ +%2$d innych chce dołączyć do pokoju</string>
 		</dict>
 	</dict>
 	<key>screen_room_timeline_state_changes</key>

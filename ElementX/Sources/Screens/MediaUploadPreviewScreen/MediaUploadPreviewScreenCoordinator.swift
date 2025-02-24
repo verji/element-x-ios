@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -14,6 +14,7 @@ struct MediaUploadPreviewScreenCoordinatorParameters {
     let mediaUploadingPreprocessor: MediaUploadingPreprocessor
     let title: String?
     let url: URL
+    let shouldShowCaptionWarning: Bool
 }
 
 enum MediaUploadPreviewScreenCoordinatorAction {
@@ -34,7 +35,8 @@ final class MediaUploadPreviewScreenCoordinator: CoordinatorProtocol {
                                                       roomProxy: parameters.roomProxy,
                                                       mediaUploadingPreprocessor: parameters.mediaUploadingPreprocessor,
                                                       title: parameters.title,
-                                                      url: parameters.url)
+                                                      url: parameters.url,
+                                                      shouldShowCaptionWarning: parameters.shouldShowCaptionWarning)
     }
     
     func start() {
@@ -48,6 +50,10 @@ final class MediaUploadPreviewScreenCoordinator: CoordinatorProtocol {
                 }
             }
             .store(in: &cancellables)
+    }
+    
+    func stop() {
+        viewModel.stopProcessing()
     }
     
     func toPresentable() -> AnyView {

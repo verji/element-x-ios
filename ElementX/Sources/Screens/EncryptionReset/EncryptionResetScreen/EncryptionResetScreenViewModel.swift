@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -21,6 +21,7 @@ class EncryptionResetScreenViewModel: EncryptionResetScreenViewModelType, Encryp
     }
     
     private var identityResetHandle: IdentityResetHandle?
+    private var passwordCancellable: AnyCancellable?
 
     init(clientProxy: ClientProxyProtocol, userIndicatorController: UserIndicatorControllerProtocol) {
         self.clientProxy = clientProxy
@@ -37,18 +38,12 @@ class EncryptionResetScreenViewModel: EncryptionResetScreenViewModelType, Encryp
             state.bindings.alertInfo = .init(id: UUID(),
                                              title: L10n.screenResetEncryptionConfirmationAlertTitle,
                                              message: L10n.screenResetEncryptionConfirmationAlertSubtitle,
-                                             primaryButton: .init(title: L10n.screenResetEncryptionConfirmationAlertAction, role: .destructive, action: { [weak self] in
+                                             primaryButton: .init(title: L10n.screenResetEncryptionConfirmationAlertAction, role: .destructive) { [weak self] in
                                                  guard let self else { return }
                                                  Task { await self.startResetFlow() }
-                                             }))
+                                             })
         case .cancel:
             actionsSubject.send(.cancel)
-        }
-    }
-    
-    func continueResetFlowWith(password: String) {
-        Task {
-            await resetWith(password: password)
         }
     }
     
@@ -80,7 +75,14 @@ class EncryptionResetScreenViewModel: EncryptionResetScreenViewModelType, Encryp
             
             switch handle.authType() {
             case .uiaa:
-                actionsSubject.send(.requestPassword)
+                let passwordPublisher = PassthroughSubject<String, Never>()
+                passwordCancellable = passwordPublisher.sink { [weak self] password in
+                    guard let self else { return }
+                    passwordCancellable = nil
+                    Task { await self.resetWith(password: password) }
+                }
+                
+                actionsSubject.send(.requestPassword(passwordPublisher: passwordPublisher))
             case .oidc(let oidcInfo):
                 guard let url = URL(string: oidcInfo.approvalUrl) else {
                     fatalError("Invalid URL received through identity reset handle: \(oidcInfo.approvalUrl)")

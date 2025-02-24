@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -61,18 +61,18 @@ struct ReadReceiptCell_Previews: PreviewProvider, TestablePreview {
                                            formattedTimestamp: "10:00"),
                         memberState: .init(displayName: "Test",
                                            avatarURL: nil),
-                        mediaProvider: MockMediaProvider())
+                        mediaProvider: MediaProviderMock(configuration: .init()))
             .previewDisplayName("No Image")
         ReadReceiptCell(readReceipt: .init(userID: "@test:matrix.org",
                                            formattedTimestamp: "10:00"),
                         memberState: .init(displayName: "Test",
-                                           avatarURL: URL.documentsDirectory),
-                        mediaProvider: MockMediaProvider())
+                                           avatarURL: .mockMXCUserAvatar),
+                        mediaProvider: MediaProviderMock(configuration: .init()))
             .previewDisplayName("With Image")
         ReadReceiptCell(readReceipt: .init(userID: "@test:matrix.org",
                                            formattedTimestamp: "10:00"),
                         memberState: nil,
-                        mediaProvider: MockMediaProvider())
+                        mediaProvider: MediaProviderMock(configuration: .init()))
             .previewDisplayName("Loading Member")
     }
 }

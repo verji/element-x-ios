@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -34,14 +34,14 @@ class PollFormScreenViewModel: PollFormScreenViewModelType, PollFormScreenViewMo
                                              title: L10n.screenEditPollDeleteConfirmationTitle,
                                              message: L10n.screenEditPollDeleteConfirmation,
                                              primaryButton: .init(title: L10n.actionCancel, role: .cancel, action: nil),
-                                             secondaryButton: .init(title: L10n.actionOk, action: { self.actionsSubject.send(.delete) }))
+                                             secondaryButton: .init(title: L10n.actionOk) { self.actionsSubject.send(.delete) })
         case .cancel:
             if state.formContentHasChanged {
                 state.bindings.alertInfo = .init(id: .init(),
                                                  title: L10n.screenCreatePollCancelConfirmationTitleIos,
                                                  message: L10n.screenCreatePollCancelConfirmationContentIos,
                                                  primaryButton: .init(title: L10n.actionCancel, role: .cancel, action: nil),
-                                                 secondaryButton: .init(title: L10n.actionOk, action: { self.actionsSubject.send(.cancel) }))
+                                                 secondaryButton: .init(title: L10n.actionOk) { self.actionsSubject.send(.cancel) })
             } else {
                 actionsSubject.send(.cancel)
             }

@@ -1,14 +1,14 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 @testable import ElementX
-import Kingfisher
+@testable import Kingfisher
 import UIKit
 
-class MockImageCache: ImageCache {
+class MockImageCache: ImageCache, @unchecked Sendable {
     var retrievedImagesInMemory = [String: UIImage]()
     var retrievedImages = [String: UIImage]()
     var storedImages = [String: UIImage]()
@@ -35,5 +35,6 @@ class MockImageCache: ImageCache {
                         callbackQueue: CallbackQueue = .untouch,
                         completionHandler: ((CacheStoreResult) -> Void)? = nil) {
         storedImages[key] = image
+        completionHandler?(.init(memoryCacheResult: .success(()), diskCacheResult: .success(())))
     }
 }

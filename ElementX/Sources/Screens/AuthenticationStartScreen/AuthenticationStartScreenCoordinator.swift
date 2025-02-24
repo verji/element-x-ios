@@ -1,12 +1,16 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
 import SwiftUI
+
+struct AuthenticationStartScreenParameters {
+    let webRegistrationEnabled: Bool
+}
 
 final class AuthenticationStartScreenCoordinator: CoordinatorProtocol {
     private var viewModel: AuthenticationStartScreenViewModelProtocol
@@ -17,8 +21,8 @@ final class AuthenticationStartScreenCoordinator: CoordinatorProtocol {
         actionsSubject.eraseToAnyPublisher()
     }
     
-    init() {
-        viewModel = AuthenticationStartScreenViewModel()
+    init(parameters: AuthenticationStartScreenParameters) {
+        viewModel = AuthenticationStartScreenViewModel(webRegistrationEnabled: parameters.webRegistrationEnabled)
     }
     
     // MARK: - Public
@@ -33,6 +37,8 @@ final class AuthenticationStartScreenCoordinator: CoordinatorProtocol {
                     actionsSubject.send(.loginManually)
                 case .loginWithQR:
                     actionsSubject.send(.loginWithQR)
+                case .register:
+                    actionsSubject.send(.register)
                 case .reportProblem:
                     actionsSubject.send(.reportProblem)
                 }

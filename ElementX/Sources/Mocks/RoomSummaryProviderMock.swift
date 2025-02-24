@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -71,8 +71,7 @@ extension Array where Element == RoomSummary {
     static let mockRooms: [Element] = [
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "1",
-                    isInvite: false,
-                    inviter: nil,
+                    joinRequestType: nil,
                     name: "Foundation 🔭🪐🌌",
                     isDirect: false,
                     avatarURL: nil,
@@ -89,11 +88,10 @@ extension Array where Element == RoomSummary {
                     isFavourite: false),
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "2",
-                    isInvite: false,
-                    inviter: nil,
+                    joinRequestType: nil,
                     name: "Foundation and Empire",
                     isDirect: false,
-                    avatarURL: URL.picturesDirectory,
+                    avatarURL: .mockMXCAvatar,
                     heroes: [],
                     lastMessage: AttributedString("How do you see the Emperor then? You think he keeps office hours?"),
                     lastMessageFormattedTimestamp: "2:56 PM",
@@ -107,8 +105,7 @@ extension Array where Element == RoomSummary {
                     isFavourite: false),
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "3",
-                    isInvite: false,
-                    inviter: nil,
+                    joinRequestType: nil,
                     name: "Second Foundation",
                     isDirect: false,
                     avatarURL: nil,
@@ -125,8 +122,7 @@ extension Array where Element == RoomSummary {
                     isFavourite: false),
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "4",
-                    isInvite: false,
-                    inviter: nil,
+                    joinRequestType: nil,
                     name: "Foundation's Edge",
                     isDirect: false,
                     avatarURL: nil,
@@ -143,8 +139,7 @@ extension Array where Element == RoomSummary {
                     isFavourite: false),
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "5",
-                    isInvite: false,
-                    inviter: nil,
+                    joinRequestType: nil,
                     name: "Foundation and Earth",
                     isDirect: true,
                     avatarURL: nil,
@@ -161,8 +156,7 @@ extension Array where Element == RoomSummary {
                     isFavourite: false),
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "6",
-                    isInvite: false,
-                    inviter: nil,
+                    joinRequestType: nil,
                     name: "Prelude to Foundation",
                     isDirect: true,
                     avatarURL: nil,
@@ -179,8 +173,7 @@ extension Array where Element == RoomSummary {
                     isFavourite: false),
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "0",
-                    isInvite: false,
-                    inviter: nil,
+                    joinRequestType: nil,
                     name: "Unknown",
                     isDirect: false,
                     avatarURL: nil,
@@ -230,11 +223,10 @@ extension Array where Element == RoomSummary {
     static let mockInvites: [Element] = [
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "someAwesomeRoomId1",
-                    isInvite: false,
-                    inviter: RoomMemberProxyMock.mockCharlie,
+                    joinRequestType: .invite(inviter: RoomMemberProxyMock.mockCharlie),
                     name: "First room",
                     isDirect: false,
-                    avatarURL: URL.picturesDirectory,
+                    avatarURL: .mockMXCAvatar,
                     heroes: [],
                     lastMessage: nil,
                     lastMessageFormattedTimestamp: nil,
@@ -248,8 +240,7 @@ extension Array where Element == RoomSummary {
                     isFavourite: false),
         RoomSummary(roomListItem: RoomListItemSDKMock(),
                     id: "someAwesomeRoomId2",
-                    isInvite: false,
-                    inviter: RoomMemberProxyMock.mockCharlie,
+                    joinRequestType: .invite(inviter: RoomMemberProxyMock.mockCharlie),
                     name: "Second room",
                     isDirect: true,
                     avatarURL: nil,

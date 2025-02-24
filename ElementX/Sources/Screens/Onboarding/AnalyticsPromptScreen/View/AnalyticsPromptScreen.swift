@@ -1,8 +1,8 @@
 //
 // Copyright 2021-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -35,7 +35,7 @@ struct AnalyticsPromptScreen: View {
     
     private var header: some View {
         VStack(spacing: 8) {
-            HeroImage(icon: \.chart)
+            BigIcon(icon: \.chart)
                 .padding(.bottom, 8)
             
             Text(L10n.screenAnalyticsPromptTitle(InfoPlistReader.main.bundleDisplayName))
@@ -65,7 +65,7 @@ struct AnalyticsPromptScreen: View {
 
     @ViewBuilder
     private func checkMarkItem(title: String, position: ListPosition) -> some View {
-        RoundedLabelItem(title: title, listPosition: position) {
+        VisualListItem(title: title, position: position) {
             CompoundIcon(\.checkCircle, size: .small, relativeTo: .body)
                 .foregroundColor(.compound.iconAccentPrimary)
         }

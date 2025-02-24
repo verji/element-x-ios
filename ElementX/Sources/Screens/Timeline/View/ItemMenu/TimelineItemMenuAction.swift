@@ -1,53 +1,72 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
+import OrderedCollections
 import SFSafeSymbols
 import SwiftUI
 
+@MainActor
 struct TimelineItemMenuActions {
     let reactions: [TimelineItemMenuReaction]
     let actions: [TimelineItemMenuAction]
-    let debugActions: [TimelineItemMenuAction]
+    let secondaryActions: [TimelineItemMenuAction]
     
-    init?(isReactable: Bool, actions: [TimelineItemMenuAction], debugActions: [TimelineItemMenuAction]) {
-        if !isReactable, actions.isEmpty, debugActions.isEmpty {
+    init?(isReactable: Bool,
+          actions: [TimelineItemMenuAction],
+          secondaryActions: [TimelineItemMenuAction],
+          emojiProvider: EmojiProviderProtocol) {
+        if !isReactable, actions.isEmpty, secondaryActions.isEmpty {
             return nil
         }
         
         self.actions = actions
-        self.debugActions = debugActions
+        self.secondaryActions = secondaryActions
+        
+        var frequentlyUsed: OrderedSet<TimelineItemMenuReaction> = [
+            .init(key: "👍️", symbol: .handThumbsup),
+            .init(key: "👎️", symbol: .handThumbsdown),
+            .init(key: "🎉", symbol: .partyPopper),
+            .init(key: "❤️", symbol: .heart)
+        ]
+        
+        frequentlyUsed.append(contentsOf: emojiProvider.frequentlyUsedSystemEmojis().map { TimelineItemMenuReaction(key: $0, symbol: .heart) })
+        
         reactions = if isReactable {
-            [
-                .init(key: "👍️", symbol: .handThumbsup),
-                .init(key: "👎️", symbol: .handThumbsdown),
-                .init(key: "🔥", symbol: .flame),
-                .init(key: "❤️", symbol: .heart),
-                .init(key: "👏", symbol: .handsClap)
-            ]
+            Array(frequentlyUsed.elements.prefix(10))
         } else {
             []
         }
     }
 }
 
-struct TimelineItemMenuReaction {
+struct TimelineItemMenuReaction: Hashable {
     let key: String
     let symbol: SFSymbol
+    
+    // Frequently used emojis on the all use the same .heart SFSymbol.
+    // Override equatable so we can remove duplicates.
+    static func == (lhs: TimelineItemMenuReaction, rhs: TimelineItemMenuReaction) -> Bool {
+        lhs.key == rhs.key
+    }
 }
 
 enum TimelineItemMenuAction: Identifiable, Hashable {
     case copy
+    case copyCaption
     case edit
+    case addCaption
+    case editCaption
+    case removeCaption
+    case editPoll
     case copyPermalink
     case redact
     case reply(isThread: Bool)
     case forward(itemID: TimelineItemIdentifier)
     case viewSource
-    case retryDecryption(sessionID: String)
     case report
     case react
     case toggleReaction(key: String)
@@ -55,55 +74,66 @@ enum TimelineItemMenuAction: Identifiable, Hashable {
     case pin
     case unpin
     case viewInRoomTimeline
+    case share
+    case save
     
     var id: Self { self }
     
     /// Whether the item should cancel a reply/edit occurring in the composer.
     var switchToDefaultComposer: Bool {
         switch self {
-        case .reply, .edit:
-            return false
+        case .reply, .edit, .addCaption, .editCaption, .editPoll:
+            false
         default:
-            return true
+            true
         }
     }
     
     /// Whether the action should be shown for an item that failed to send.
     var canAppearInFailedEcho: Bool {
         switch self {
-        case .copy, .edit, .redact, .viewSource:
-            return true
+        case .copy, .edit, .redact, .viewSource, .editPoll:
+            true
         default:
-            return false
+            false
         }
     }
     
     /// Whether the action should be shown for a redacted item.
     var canAppearInRedacted: Bool {
         switch self {
-        case .viewSource:
-            return true
+        case .viewSource, .unpin, .viewInRoomTimeline:
+            true
         default:
-            return false
+            false
         }
     }
     
     /// Whether or not the action is destructive.
     var isDestructive: Bool {
         switch self {
-        case .redact, .report:
-            return true
+        case .redact, .report, .removeCaption:
+            true
         default:
-            return false
+            false
         }
     }
     
     var canAppearInPinnedEventsTimeline: Bool {
         switch self {
-        case .viewInRoomTimeline, .pin, .unpin, .forward, .redact:
-            return true
+        case .viewInRoomTimeline, .pin, .unpin, .forward:
+            true
         default:
-            return false
+            false
+        }
+    }
+    
+    var canAppearInMediaDetails: Bool {
+        switch self {
+        case .viewInRoomTimeline, .share, .save, .redact:
+            true
+        default:
+            false
         }
     }
     
@@ -112,9 +142,19 @@ enum TimelineItemMenuAction: Identifiable, Hashable {
     var label: some View {
         switch self {
         case .copy:
-            Label(L10n.actionCopy, icon: \.copy)
+            Label(L10n.actionCopyText, icon: \.copy)
+        case .copyCaption:
+            Label(L10n.actionCopyCaption, icon: \.copy)
         case .edit:
             Label(L10n.actionEdit, icon: \.edit)
+        case .addCaption:
+            Label(L10n.actionAddCaption, icon: \.edit)
+        case .editCaption:
+            Label(L10n.actionEditCaption, icon: \.edit)
+        case .removeCaption:
+            Label(L10n.actionRemoveCaption, icon: \.close)
+        case .editPoll:
+            Label(L10n.actionEditPoll, icon: \.edit)
         case .copyPermalink:
             Label(L10n.actionCopyLinkToMessage, icon: \.link)
         case .reply(let isThread):
@@ -122,11 +162,9 @@ enum TimelineItemMenuAction: Identifiable, Hashable {
         case .forward:
             Label(L10n.actionForward, icon: \.forward)
         case .redact:
-            Label(L10n.actionRemove, icon: \.delete)
+            Label(L10n.actionRemoveMessage, icon: \.delete)
         case .viewSource:
             Label(L10n.actionViewSource, icon: \.code)
-        case .retryDecryption:
-            Label(L10n.actionRetryDecryption, systemImage: "arrow.down.message")
         case .report:
             Label(L10n.actionReportContent, icon: \.chatProblem)
         case .react:
@@ -142,6 +180,10 @@ enum TimelineItemMenuAction: Identifiable, Hashable {
             Label(L10n.actionUnpin, icon: \.unpin)
         case .viewInRoomTimeline:
             Label(L10n.actionViewInTimeline, icon: \.visibilityOn)
+        case .share:
+            Label(L10n.actionShare, icon: \.shareIos)
+        case .save:
+            Label(L10n.actionSave, icon: \.downloadIos)
         }
     }
 }

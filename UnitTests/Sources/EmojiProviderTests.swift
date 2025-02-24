@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -18,7 +18,7 @@ final class EmojiProviderTests: XCTestCase {
         let emojiLoaderMock = EmojiLoaderMock()
         emojiLoaderMock.categories = [category]
         
-        let emojiProvider = EmojiProvider(loader: emojiLoaderMock)
+        let emojiProvider = EmojiProvider(loader: emojiLoaderMock, appSettings: ServiceLocator.shared.settings)
         
         let categories = await emojiProvider.categories()
         XCTAssertEqual(emojiLoaderMock.categories, categories)
@@ -31,7 +31,7 @@ final class EmojiProviderTests: XCTestCase {
         let emojiLoaderMock = EmojiLoaderMock()
         emojiLoaderMock.categories = [category]
         
-        let emojiProvider = EmojiProvider(loader: emojiLoaderMock)
+        let emojiProvider = EmojiProvider(loader: emojiLoaderMock, appSettings: ServiceLocator.shared.settings)
         
         let categories = await emojiProvider.categories(searchString: "")
         XCTAssertEqual(emojiLoaderMock.categories, categories)
@@ -48,7 +48,7 @@ final class EmojiProviderTests: XCTestCase {
         let emojiLoaderMock = EmojiLoaderMock()
         emojiLoaderMock.categories = categoriesForFirstLoad
         
-        let emojiProvider = EmojiProvider(loader: emojiLoaderMock)
+        let emojiProvider = EmojiProvider(loader: emojiLoaderMock, appSettings: ServiceLocator.shared.settings)
         
         _ = await emojiProvider.categories()
         emojiLoaderMock.categories = categoriesForSecondLoad
@@ -78,7 +78,7 @@ final class EmojiProviderTests: XCTestCase {
         let emojiLoaderMock = EmojiLoaderMock()
         emojiLoaderMock.categories = categories
         
-        let emojiProvider = EmojiProvider(loader: emojiLoaderMock)
+        let emojiProvider = EmojiProvider(loader: emojiLoaderMock, appSettings: ServiceLocator.shared.settings)
         
         _ = await emojiProvider.categories()
         let result = await emojiProvider.categories(searchString: searchString)

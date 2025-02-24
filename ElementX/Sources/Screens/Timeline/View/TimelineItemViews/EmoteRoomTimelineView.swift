@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -32,17 +32,17 @@ struct EmoteRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static var body: some View {
         VStack(alignment: .leading, spacing: 20.0) {
             EmoteRoomTimelineView(timelineItem: itemWith(text: "Short loin ground round tongue hamburger, fatback salami shoulder. Beef turkey sausage kielbasa strip steak. Alcatra capicola pig tail pancetta chislic.",
-                                                         timestamp: "Now",
+                                                         timestamp: .mock,
                                                          senderId: "Bob"))
             
             EmoteRoomTimelineView(timelineItem: itemWith(text: "Some other text",
-                                                         timestamp: "Later",
+                                                         timestamp: .mock,
                                                          senderId: "Anne"))
         }
     }
     
-    private static func itemWith(text: String, timestamp: String, senderId: String) -> EmoteRoomTimelineItem {
-        EmoteRoomTimelineItem(id: .random,
+    private static func itemWith(text: String, timestamp: Date, senderId: String) -> EmoteRoomTimelineItem {
+        EmoteRoomTimelineItem(id: .randomEvent,
                               timestamp: timestamp,
                               isOutgoing: false,
                               isEditable: false,

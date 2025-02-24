@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -82,10 +82,10 @@ extension Poll.Option {
 
 extension PollRoomTimelineItem {
     static func mock(poll: Poll, isOutgoing: Bool = true, isEditable: Bool = false) -> Self {
-        .init(id: .init(timelineID: UUID().uuidString, eventID: UUID().uuidString),
+        .init(id: .randomEvent,
               poll: poll,
               body: "poll",
-              timestamp: "Now",
+              timestamp: .mock,
               isOutgoing: isOutgoing,
               isEditable: isEditable,
               canBeRepliedTo: true,

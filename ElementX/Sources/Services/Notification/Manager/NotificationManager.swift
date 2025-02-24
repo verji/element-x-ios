@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -29,16 +29,16 @@ final class NotificationManager: NSObject, NotificationManagerProtocol {
     // MARK: NotificationManagerProtocol
 
     weak var delegate: NotificationManagerDelegate?
-
+    
     func start() {
-        // Not implemented yet
-        // let replyAction = UNTextInputNotificationAction(identifier: NotificationConstants.Action.inlineReply,
-        // title: L10n.actionQuickReply,
-        // options: [])
+        let replyAction = UNTextInputNotificationAction(identifier: NotificationConstants.Action.inlineReply,
+                                                        title: L10n.actionQuickReply,
+                                                        options: [])
         let messageCategory = UNNotificationCategory(identifier: NotificationConstants.Category.message,
-                                                     actions: [],
+                                                     actions: [replyAction],
                                                      intentIdentifiers: [],
                                                      options: [])
+        
         let inviteCategory = UNNotificationCategory(identifier: NotificationConstants.Category.invite,
                                                     actions: [],
                                                     intentIdentifiers: [],
@@ -94,6 +94,9 @@ final class NotificationManager: NSObject, NotificationManagerProtocol {
                     self?.delegate?.registerForRemoteNotifications()
                 }
             }
+            
+            let settings = await notificationCenter.notificationSettings()
+            MXLog.info("Notification sound enabled: \(settings.soundSetting == .enabled)")
         }
     }
 

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -26,14 +26,14 @@ struct RedactedRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         VStack(alignment: .leading, spacing: 20.0) {
             RedactedRoomTimelineView(timelineItem: itemWith(text: L10n.commonMessageRemoved,
-                                                            timestamp: "Later",
+                                                            timestamp: .mock,
                                                             senderId: "Anne"))
         }
         .environmentObject(viewModel.context)
     }
     
-    private static func itemWith(text: String, timestamp: String, senderId: String) -> RedactedRoomTimelineItem {
-        RedactedRoomTimelineItem(id: .random,
+    private static func itemWith(text: String, timestamp: Date, senderId: String) -> RedactedRoomTimelineItem {
+        RedactedRoomTimelineItem(id: .randomEvent,
                                  body: text,
                                  timestamp: timestamp,
                                  isOutgoing: false,

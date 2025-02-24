@@ -1,11 +1,12 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
+import MatrixRustSDK
 import OrderedCollections
 import SwiftUI
 
@@ -20,7 +21,9 @@ enum TimelineViewModelAction {
     case displayMediaUploadPreviewScreen(url: URL)
     case tappedOnSenderDetails(userID: String)
     case displayMessageForwarding(forwardingItem: MessageForwardingItem)
+    case displayMediaPreview(TimelineMediaPreviewViewModel)
     case displayLocation(body: String, geoURI: GeoURI, description: String?)
+    case displayResolveSendFailure(failure: TimelineItemSendFailure.VerifiedUser, sendHandle: SendHandleProxy)
     case composer(action: TimelineComposerAction)
     case hasScrolled(direction: ScrollDirection)
     case viewInRoomTimeline(eventID: String)
@@ -41,7 +44,7 @@ enum TimelineViewAction {
     case itemAppeared(itemID: TimelineItemIdentifier)
     case itemDisappeared(itemID: TimelineItemIdentifier)
     
-    case itemTapped(itemID: TimelineItemIdentifier)
+    case mediaTapped(itemID: TimelineItemIdentifier)
     case itemSendInfoTapped(itemID: TimelineItemIdentifier)
     case toggleReaction(key: String, itemID: TimelineItemIdentifier)
     case sendReadReceiptIfNeeded(TimelineItemIdentifier)
@@ -71,39 +74,47 @@ enum TimelineViewAction {
     case hasSwitchedTimeline
     
     case hasScrolled(direction: ScrollDirection)
+    case setOpenURLAction(OpenURLAction)
 }
 
 enum TimelineComposerAction {
     case setMode(mode: ComposerMode)
     case setText(plainText: String, htmlText: String?)
+    case setFocus
     case removeFocus
     case clear
 }
 
 struct TimelineViewState: BindableState {
-    let isPinnedEventsTimeline: Bool
+    let timelineKind: TimelineKind
     var roomID: String
     var members: [String: RoomMemberState] = [:]
     var typingMembers: [String] = []
     var showLoading = false
     var showReadReceipts = false
-    var isEncryptedOneToOneRoom = false
-    var timelineViewState: TimelineState // check the doc before changing this
+    var isDirectOneToOneRoom = false
+    var timelineState: TimelineState // check the doc before changing this
 
     var ownUserID: String
     var canCurrentUserRedactOthers = false
     var canCurrentUserRedactSelf = false
     var canCurrentUserPin = false
     var isViewSourceEnabled: Bool
+    var hideTimelineMedia: Bool
         
     // The `pinnedEventIDs` are used only to determine if an item is already pinned or not.
     // It's updated from the room info, so it's faster than using the timeline
     var pinnedEventIDs: Set<String> = []
     
+    /// an openURL closure which opens URLs first using the App's environment rather than skipping out to external apps
+    var openURL: OpenURLAction?
+    
     var bindings: TimelineViewStateBindings
     
     /// A closure providing the associated audio player state for an item in the timeline.
     var audioPlayerStateProvider: (@MainActor (_ itemId: TimelineItemIdentifier) -> AudioPlayerState?)?
+    
+    var emojiProvider: EmojiProviderProtocol
 }
 
 struct TimelineViewStateBindings {
@@ -112,9 +123,6 @@ struct TimelineViewStateBindings {
     /// The state of wether reactions listed on the timeline are expanded/collapsed.
     /// Key is itemID, value is the collapsed state.
     var reactionsCollapsed: [TimelineItemIdentifier: Bool]
-    
-    /// A media item that will be previewed with QuickLook.
-    var mediaPreviewItem: MediaPreviewItem?
     
     var alertInfo: AlertInfo<RoomScreenAlertInfoType>?
     
@@ -196,9 +204,9 @@ struct TimelineState {
     // These can be removed when we have full swiftUI and moved as @State values in the view
     var scrollToBottomPublisher = PassthroughSubject<Void, Never>()
     
-    var itemsDictionary = OrderedDictionary<String, RoomTimelineItemViewState>()
+    var itemsDictionary = OrderedDictionary<TimelineItemIdentifier.UniqueID, RoomTimelineItemViewState>()
     
-    var timelineIDs: [String] {
+    var uniqueIDs: [TimelineItemIdentifier.UniqueID] {
         itemsDictionary.keys.elements
     }
     

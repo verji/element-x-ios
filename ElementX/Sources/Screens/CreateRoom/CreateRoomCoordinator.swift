@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -37,7 +37,8 @@ final class CreateRoomCoordinator: CoordinatorProtocol {
                                         createRoomParameters: parameters.createRoomParameters,
                                         selectedUsers: parameters.selectedUsers,
                                         analytics: ServiceLocator.shared.analytics,
-                                        userIndicatorController: parameters.userIndicatorController)
+                                        userIndicatorController: parameters.userIndicatorController,
+                                        appSettings: ServiceLocator.shared.settings)
     }
     
     func start() {

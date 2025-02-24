@@ -1,14 +1,16 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
 import MatrixRustSDK
 
 final class NSEUserSession {
+    let sessionDirectories: SessionDirectories
+    
     private let baseClient: Client
     private let notificationClient: NotificationClient
     private let userID: String
@@ -17,7 +19,9 @@ final class NSEUserSession {
                                                                                networkMonitor: nil)
     private let delegateHandle: TaskHandle?
 
-    init(credentials: KeychainCredentials, clientSessionDelegate: ClientSessionDelegate, appHooks: AppHooks) async throws {
+    init(credentials: KeychainCredentials, clientSessionDelegate: ClientSessionDelegate, appHooks: AppHooks, appSettings: CommonSettingsProtocol) async throws {
+        sessionDirectories = credentials.restorationToken.sessionDirectories
+        
         userID = credentials.userID
         if credentials.restorationToken.passphrase != nil {
             MXLog.info("Restoring client with encrypted store.")
@@ -29,9 +33,11 @@ final class NSEUserSession {
                          httpProxy: URL(string: homeserverURL)?.globalProxy,
                          slidingSync: .restored,
                          sessionDelegate: clientSessionDelegate,
-                         appHooks: appHooks)
-            .sessionPaths(dataPath: credentials.restorationToken.sessionDirectory.path(percentEncoded: false),
-                          cachePath: credentials.restorationToken.cacheDirectory.path(percentEncoded: false))
+                         appHooks: appHooks,
+                         enableOnlySignedDeviceIsolationMode: appSettings.enableOnlySignedDeviceIsolationMode,
+                         eventCacheEnabled: appSettings.eventCacheEnabled)
+            .sessionPaths(dataPath: credentials.restorationToken.sessionDirectories.dataPath,
+                          cachePath: credentials.restorationToken.sessionDirectories.cachePath)
             .username(username: credentials.userID)
             .homeserverUrl(url: homeserverURL)
             .passphrase(passphrase: credentials.restorationToken.passphrase)

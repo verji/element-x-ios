@@ -1,14 +1,15 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
+import Combine
 import Foundation
 
 enum EncryptionResetScreenViewModelAction {
-    case requestPassword
+    case requestPassword(passwordPublisher: PassthroughSubject<String, Never>)
     case requestOIDCAuthorisation(url: URL)
     case resetFinished
     case cancel

@@ -1,8 +1,8 @@
 //
 // Copyright 2021-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import AnalyticsEvents
@@ -122,19 +122,26 @@ extension AnalyticsService {
     /// - Parameter name: The name of the error
     /// - Parameter timeToDecryptMillis: The time it took to decrypt the event in milliseconds, needs to be used only to track UTD errors, otherwise if the error is nort related to UTD it should be nil.
     /// Can be found in `UnableToDecryptInfo`. In case the `UnableToDecryptInfo` contains the value as nil, pass it as `-1`
-    func trackError(context: String?, domain: AnalyticsEvent.Error.Domain, name: AnalyticsEvent.Error.Name, timeToDecryptMillis: Int? = nil) {
+    func trackError(context: String?, domain: AnalyticsEvent.Error.Domain,
+                    name: AnalyticsEvent.Error.Name,
+                    timeToDecryptMillis: Int? = nil,
+                    eventLocalAgeMillis: Int? = nil,
+                    isFederated: Bool? = nil,
+                    isMatrixDotOrg: Bool? = nil,
+                    userTrustsOwnIdentity: Bool? = nil,
+                    wasVisibleToUser: Bool? = nil) {
         // CryptoModule is deprecated
         capture(event: AnalyticsEvent.Error(context: context,
                                             cryptoModule: .Rust,
                                             cryptoSDK: .Rust,
                                             domain: domain,
-                                            eventLocalAgeMillis: nil,
-                                            isFederated: nil,
-                                            isMatrixDotOrg: nil,
+                                            eventLocalAgeMillis: eventLocalAgeMillis,
+                                            isFederated: isFederated,
+                                            isMatrixDotOrg: isMatrixDotOrg,
                                             name: name,
                                             timeToDecryptMillis: timeToDecryptMillis,
-                                            userTrustsOwnIdentity: nil,
-                                            wasVisibleToUser: nil))
+                                            userTrustsOwnIdentity: userTrustsOwnIdentity,
+                                            wasVisibleToUser: wasVisibleToUser))
     }
     
     /// Track the creation of a room
@@ -242,5 +249,9 @@ extension AnalyticsService {
     
     func updateUserProperties(_ userProperties: AnalyticsEvent.UserProperties) {
         client.updateUserProperties(userProperties)
+    }
+    
+    func trackPinUnpinEvent(_ event: AnalyticsEvent.PinUnpinAction) {
+        capture(event: event)
     }
 }

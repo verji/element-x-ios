@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -44,6 +44,8 @@ struct EmojiPickerEmojiCategoryViewData: Identifiable {
             return L10n.emojiPickerCategorySymbols
         case "flags":
             return L10n.emojiPickerCategoryFlags
+        case EmojiCategory.frequentlyUsedCategoryIdentifier:
+            return L10n.commonFrequentlyUsed
         default:
             MXLog.failure("Missing translation for emoji category with id \(id)")
             return ""

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import AVKit
@@ -24,8 +24,6 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
         actionsSubject.eraseToAnyPublisher()
     }
     
-    private var syncUpdateCancellable: AnyCancellable?
-    
     /// Designated initialiser
     /// - Parameters:
     ///   - elementCallService: service responsible for setting up CallKit
@@ -43,7 +41,7 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
         switch configuration.kind {
         case .genericCallLink(let url):
             widgetDriver = GenericCallLinkWidgetDriver(url: url)
-        case .roomCall(let roomProxy, let clientProxy, _, _, _, _):
+        case .roomCall(let roomProxy, let clientProxy, _, _, _, _, _):
             guard let deviceID = clientProxy.deviceID else { fatalError("Missing device ID for the call.") }
             widgetDriver = roomProxy.elementCallWidgetDriver(deviceID: deviceID)
         }
@@ -111,6 +109,8 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
         case .urlChanged(let url):
             guard let url else { return }
             MXLog.info("URL changed to: \(url)")
+        case .pictureInPictureIsAvailable(let controller):
+            actionsSubject.send(.pictureInPictureIsAvailable(controller))
         case .navigateBack:
             Task { await handleBackwardsNavigation() }
         case .pictureInPictureWillStop:
@@ -135,46 +135,39 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
         case .genericCallLink(let url):
             state.url = url
             // We need widget messaging to work before enabling CallKit, otherwise mute, hangup etc do nothing.
-        
-        case .roomCall(let roomProxy, let clientProxy, let clientID, let elementCallBaseURL, let elementCallBaseURLOverride, let colorScheme):
-            // Wait for room states to be up to date before starting the call and notifying others
-            syncUpdateCancellable = clientProxy.actionsPublisher
-                .filter(\.isSyncUpdate)
-                .timeout(.seconds(5), scheduler: DispatchQueue.main)
-                .first() // Timeout will make the publisher complete, use first to handle both branches in the same place
-                .sink(receiveCompletion: { [weak self] _ in
-                    Task { [weak self] in
-                        guard let self else { return }
-                        
-                        let baseURL = if let elementCallBaseURLOverride {
-                            elementCallBaseURLOverride
-                        } else if case .success(let wellKnown) = await clientProxy.getElementWellKnown(), let wellKnownCall = wellKnown?.call {
-                            wellKnownCall.widgetURL
-                        } else {
-                            elementCallBaseURL
-                        }
-                        
-                        switch await widgetDriver.start(baseURL: baseURL, clientID: clientID, colorScheme: colorScheme) {
-                        case .success(let url):
-                            state.url = url
-                        case .failure(let error):
-                            MXLog.error("Failed starting ElementCall Widget Driver with error: \(error)")
-                            state.bindings.alertInfo = .init(id: UUID(),
-                                                             title: L10n.errorUnknown,
-                                                             primaryButton: .init(title: L10n.actionOk) {
-                                                                 self.actionsSubject.send(.dismiss)
-                                                             })
-                            
-                            return
-                        }
-                        
-                        await elementCallService.setupCallSession(roomID: roomProxy.id, roomDisplayName: roomProxy.roomTitle)
-                        
-                        _ = await roomProxy.sendCallNotificationIfNeeded()
-                        
-                        syncUpdateCancellable = nil
-                    }
-                }, receiveValue: { _ in })
+            
+        case .roomCall(let roomProxy, let clientProxy, let clientID, let elementCallBaseURL, let elementCallBaseURLOverride, let colorScheme, let notifyOtherParticipants):
+            Task { [weak self] in
+                guard let self else { return }
+                
+                let baseURL = if let elementCallBaseURLOverride {
+                    elementCallBaseURLOverride
+                } else if case .success(let wellKnown) = await clientProxy.getElementWellKnown(), let wellKnownCall = wellKnown?.call {
+                    wellKnownCall.widgetURL
+                } else {
+                    elementCallBaseURL
+                }
+                
+                switch await widgetDriver.start(baseURL: baseURL, clientID: clientID, colorScheme: colorScheme) {
+                case .success(let url):
+                    state.url = url
+                case .failure(let error):
+                    MXLog.error("Failed starting ElementCall Widget Driver with error: \(error)")
+                    state.bindings.alertInfo = .init(id: UUID(),
+                                                     title: L10n.errorUnknown,
+                                                     primaryButton: .init(title: L10n.actionOk) {
+                                                         self.actionsSubject.send(.dismiss)
+                                                     })
+                    return
+                }
+                
+                await elementCallService.setupCallSession(roomID: roomProxy.id,
+                                                          roomDisplayName: roomProxy.infoPublisher.value.displayName ?? roomProxy.id)
+                
+                if notifyOtherParticipants {
+                    _ = await roomProxy.sendCallNotificationIfNeeded()
+                }
+            }
         }
     }
     
@@ -187,8 +180,8 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
         }
         
         switch await requestPictureInPictureHandler() {
-        case .success(let controller):
-            actionsSubject.send(.pictureInPictureStarted(controller))
+        case .success:
+            actionsSubject.send(.pictureInPictureStarted)
         case .failure:
             actionsSubject.send(.dismiss)
         }
@@ -211,14 +204,20 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
     }
     
     private func postMessageToWidget(_ message: ElementCallWidgetMessage) async {
+        let data: Data
         do {
-            let data = try JSONEncoder().encode(message)
-            let json = String(decoding: data, as: UTF8.self)
-            
-            await postJSONToWidget(json)
+            data = try JSONEncoder().encode(message)
         } catch {
             MXLog.error("Failed encoding widget message with error: \(error)")
+            return
         }
+        
+        guard let json = String(data: data, encoding: .utf8) else {
+            MXLog.error("Invalid data for widget message")
+            return
+        }
+        
+        await postJSONToWidget(json)
     }
     
     private func postJSONToWidget(_ json: String) async {

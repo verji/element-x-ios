@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -12,7 +12,7 @@ struct FormattedBodyText: View {
     
     private let attributedString: AttributedString
     private let additionalWhitespacesCount: Int
-    private let boostEmojiSize: Bool
+    private let boostFontSize: Bool
     
     private let defaultAttributesContainer: AttributeContainer = {
         var container = AttributeContainer()
@@ -35,9 +35,7 @@ struct FormattedBodyText: View {
         
         let string = String(attributedString.characters)
         
-        if boostEmojiSize,
-           string.containsOnlyEmoji,
-           let range = adjustedAttributedString.range(of: string) {
+        if boostFontSize, let range = adjustedAttributedString.range(of: string) {
             adjustedAttributedString[range].font = UIFont.systemFont(ofSize: 48.0)
         }
         
@@ -46,16 +44,16 @@ struct FormattedBodyText: View {
     
     init(attributedString: AttributedString,
          additionalWhitespacesCount: Int = 0,
-         boostEmojiSize: Bool = false) {
+         boostFontSize: Bool = false) {
         self.attributedString = attributedString
         self.additionalWhitespacesCount = additionalWhitespacesCount
-        self.boostEmojiSize = boostEmojiSize
+        self.boostFontSize = boostFontSize
     }
     
-    init(text: String, additionalWhitespacesCount: Int = 0, boostEmojiSize: Bool = false) {
+    init(text: String, additionalWhitespacesCount: Int = 0, boostFontSize: Bool = false) {
         self.init(attributedString: AttributedString(text),
                   additionalWhitespacesCount: additionalWhitespacesCount,
-                  boostEmojiSize: boostEmojiSize)
+                  boostFontSize: boostFontSize)
     }
     
     // These is needed to create the slightly off inlined timestamp effect
@@ -189,38 +187,21 @@ struct FormattedBodyText_Previews: PreviewProvider, TestablePreview {
                 ForEach(htmlStrings, id: \.self) { htmlString in
                     if let attributedString = attributedStringBuilder.fromHTML(htmlString) {
                         FormattedBodyText(attributedString: attributedString)
-                            .previewBubble()
+                            .bubbleBackground()
                     }
                 }
                 FormattedBodyText(attributedString: AttributedString("Some plain text wrapped in an AttributedString."))
-                    .previewBubble()
+                    .bubbleBackground()
                 FormattedBodyText(text: "Some plain text that's not an attributed component.")
-                    .previewBubble()
+                    .bubbleBackground()
                 FormattedBodyText(text: "Some plain text that's not an attributed component. This one is really long.")
-                    .previewBubble()
+                    .bubbleBackground()
                 
-                FormattedBodyText(text: "❤️", boostEmojiSize: true)
-                    .previewBubble()
+                FormattedBodyText(text: "❤️", boostFontSize: true)
+                    .bubbleBackground()
             }
             .padding()
         }
         .previewLayout(.sizeThatFits)
-        .snapshot(delay: 0.25)
-    }
-}
-
-private struct PreviewBubbleModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .padding(8)
-            .background(Color.compound._bgBubbleOutgoing)
-            .cornerRadius(12)
-            .environmentObject(TimelineViewModel.mock.context)
-    }
-}
-
-private extension View {
-    func previewBubble() -> some View {
-        modifier(PreviewBubbleModifier())
     }
 }

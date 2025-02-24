@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -29,7 +29,7 @@ struct IdentityConfirmedScreen: View {
     @ViewBuilder
     private var screenHeader: some View {
         VStack(spacing: 0) {
-            HeroImage(icon: \.checkCircle, style: .positive)
+            BigIcon(icon: \.checkCircle, style: .successSolid)
                 .padding(.bottom, 16)
             
             Text(L10n.screenIdentityConfirmedTitle)

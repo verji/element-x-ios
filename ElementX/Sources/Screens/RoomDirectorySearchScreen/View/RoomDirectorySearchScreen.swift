@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -84,7 +84,7 @@ struct RoomDirectorySearchScreen_Previews: PreviewProvider, TestablePreview {
                                                  topic: nil,
                                                  avatar: .room(id: "test_2",
                                                                name: "Test 2",
-                                                               avatarURL: .documentsDirectory),
+                                                               avatarURL: .mockMXCAvatar),
                                                  canBeJoined: false)]
         
         let roomDirectorySearchProxy = RoomDirectorySearchProxyMock(configuration: .init(results: results))
@@ -93,11 +93,10 @@ struct RoomDirectorySearchScreen_Previews: PreviewProvider, TestablePreview {
         
         return RoomDirectorySearchScreenViewModel(clientProxy: clientProxy,
                                                   userIndicatorController: UserIndicatorControllerMock(),
-                                                  mediaProvider: MockMediaProvider())
+                                                  mediaProvider: MediaProviderMock(configuration: .init()))
     }()
     
     static var previews: some View {
         RoomDirectorySearchScreen(context: viewModel.context)
-            .snapshot(delay: 1.0)
     }
 }

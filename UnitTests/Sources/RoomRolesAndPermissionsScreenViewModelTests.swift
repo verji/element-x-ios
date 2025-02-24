@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -49,7 +49,7 @@ class RoomRolesAndPermissionsScreenViewModelTests: XCTestCase {
         context.send(viewAction: .editOwnUserRole)
         XCTAssertNotNil(context.alertInfo)
         
-        context.alertInfo?.verticalButtons?.first(where: { $0.title.localizedStandardContains("moderator") })?.action?()
+        context.alertInfo?.verticalButtons?.first { $0.title.localizedStandardContains("moderator") }?.action?()
         
         try await Task.sleep(for: .milliseconds(100))
         
@@ -64,7 +64,7 @@ class RoomRolesAndPermissionsScreenViewModelTests: XCTestCase {
         context.send(viewAction: .editOwnUserRole)
         XCTAssertNotNil(context.alertInfo)
         
-        context.alertInfo?.verticalButtons?.first(where: { $0.title.localizedStandardContains("member") })?.action?()
+        context.alertInfo?.verticalButtons?.first { $0.title.localizedStandardContains("member") }?.action?()
         
         try await Task.sleep(for: .milliseconds(100))
         

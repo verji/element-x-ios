@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -15,6 +15,7 @@ typealias PasteHandler = (NSItemProvider) -> Void
 struct MessageComposer: View {
     @Binding var plainComposerText: NSAttributedString
     @Binding var presendCallback: (() -> Void)?
+    @Binding var selectedRange: NSRange
     let composerView: WysiwygComposerView
     let mode: ComposerMode
     let composerFormattingEnabled: Bool
@@ -35,17 +36,8 @@ struct MessageComposer: View {
                 resizeGrabber
             }
             
-            mainContent
-                .padding(.horizontal, 12.0)
-                .clipShape(composerShape)
-                .background {
-                    ZStack {
-                        composerShape
-                            .fill(Color.compound.bgSubtleSecondary)
-                        composerShape
-                            .stroke(Color.compound._borderTextFieldFocused, lineWidth: 0.5)
-                    }
-                }
+            composerTextField
+                .messageComposerStyle(header: header)
                 // Explicitly disable all animations to fix weirdness with the header immediately
                 // appearing whilst the text field and keyboard are still animating up to it.
                 .animation(.noAnimation, value: mode)
@@ -57,34 +49,28 @@ struct MessageComposer: View {
     
     @State private var composerFrame = CGRect.zero
     
-    private var mainContent: some View {
-        VStack(alignment: .leading, spacing: -6) {
-            header
-            
-            if composerFormattingEnabled {
-                Color.clear
-                    .overlay(alignment: .top) {
-                        composerView
-                            .clipped()
-                            .readFrame($composerFrame)
-                    }
-                    .frame(minHeight: ComposerConstant.minHeight, maxHeight: max(composerHeight, composerFrame.height),
-                           alignment: .top)
-                    .tint(.compound.iconAccentTertiary)
-                    .padding(.vertical, 10)
-                    .onAppear {
-                        onAppearAction()
-                    }
-            } else {
-                MessageComposerTextField(placeholder: L10n.richTextEditorComposerPlaceholder,
-                                         text: $plainComposerText,
-                                         presendCallback: $presendCallback,
-                                         maxHeight: 300,
-                                         keyHandler: { handleKeyPress($0) },
-                                         pasteHandler: pasteAction)
-                    .tint(.compound.iconAccentTertiary)
-                    .padding(.vertical, 10)
-            }
+    @ViewBuilder
+    private var composerTextField: some View {
+        if composerFormattingEnabled {
+            Color.clear
+                .overlay(alignment: .top) {
+                    composerView
+                        .clipped()
+                        .readFrame($composerFrame)
+                }
+                .frame(minHeight: ComposerConstant.minHeight, maxHeight: max(composerHeight, composerFrame.height),
+                       alignment: .top)
+                .onAppear {
+                    onAppearAction()
+                }
+        } else {
+            MessageComposerTextField(placeholder: L10n.richTextEditorComposerPlaceholder,
+                                     text: $plainComposerText,
+                                     presendCallback: $presendCallback,
+                                     selectedRange: $selectedRange,
+                                     maxHeight: ComposerConstant.maxHeight,
+                                     keyHandler: { handleKeyPress($0) },
+                                     pasteHandler: pasteAction)
         }
     }
 
@@ -98,8 +84,8 @@ struct MessageComposer: View {
         switch mode {
         case .reply(_, let replyDetails, _):
             MessageComposerReplyHeader(replyDetails: replyDetails, action: cancellationAction)
-        case .edit:
-            MessageComposerEditHeader(action: cancellationAction)
+        case .edit(_, let editType):
+            MessageComposerEditHeader(editType: editType, action: cancellationAction)
         case .recordVoiceMessage, .previewVoiceMessage, .default:
             EmptyView()
         }
@@ -107,7 +93,7 @@ struct MessageComposer: View {
 
     private var resizeGrabber: some View {
         Capsule()
-            .foregroundColor(Asset.Colors.grabber.swiftUIColor)
+            .foregroundStyle(.tertiary)
             .frame(width: 36, height: 5)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
@@ -168,14 +154,20 @@ private struct MessageComposerReplyHeader: View {
 }
 
 private struct MessageComposerEditHeader: View {
+    let editType: ComposerMode.EditType
     let action: () -> Void
+    
+    private var title: String {
+        switch editType {
+        case .default: L10n.commonEditing
+        case .addCaption: L10n.commonAddingCaption
+        case .editCaption: L10n.commonEditingCaption
+        }
+    }
     
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            Label(L10n.commonEditing,
-                  icon: \.editSolid,
-                  iconSize: .xSmall,
-                  relativeTo: .compound.bodySMSemibold)
+            Label(title, icon: \.editSolid, iconSize: .xSmall, relativeTo: .compound.bodySMSemibold)
                 .labelStyle(MessageComposerHeaderLabelStyle())
             Spacer()
             Button(action: action) {
@@ -200,24 +192,72 @@ private struct MessageComposerHeaderLabelStyle: LabelStyle {
     }
 }
 
+// MARK: - Style
+
+extension View {
+    func messageComposerStyle(header: some View = EmptyView()) -> some View {
+        modifier(MessageComposerStyleModifier(header: header))
+    }
+}
+
+private struct MessageComposerStyleModifier<Header: View>: ViewModifier {
+    private let composerShape = RoundedRectangle(cornerRadius: 21, style: .circular)
+    
+    let header: Header
+    
+    func body(content: Content) -> some View {
+        VStack(alignment: .leading, spacing: -6) {
+            header
+            
+            content
+                .tint(.compound.iconAccentTertiary)
+                .padding(.vertical, 10)
+        }
+        .padding(.horizontal, 12.0)
+        .clipShape(composerShape)
+        .background {
+            ZStack {
+                composerShape
+                    .fill(Color.compound.bgSubtleSecondary)
+                composerShape
+                    .stroke(Color.compound.borderInteractiveSecondary, lineWidth: 0.5)
+            }
+        }
+    }
+}
+
+// MARK: - Previews
+
 struct MessageComposer_Previews: PreviewProvider, TestablePreview {
     static let viewModel = TimelineViewModel.mock
     
     static let replyTypes: [TimelineItemReplyDetails] = [
         .loaded(sender: .init(id: "Dave"),
                 eventID: "123",
-                eventContent: .message(.audio(.init(body: "Audio: Ride the lightning", duration: 100, waveform: nil, source: nil, contentType: nil)))),
+                eventContent: .message(.audio(.init(filename: "lightning.mp3",
+                                                    caption: "Audio: Ride the lightning",
+                                                    duration: 100,
+                                                    waveform: nil,
+                                                    source: nil,
+                                                    fileSize: nil,
+                                                    contentType: nil)))),
         .loaded(sender: .init(id: "James"),
                 eventID: "123",
                 eventContent: .message(.emote(.init(body: "Emote: James thinks he's the phantom lord")))),
         .loaded(sender: .init(id: "Robert"),
                 eventID: "123",
-                eventContent: .message(.file(.init(body: "File: Crash course in brain surgery.pdf", source: nil, thumbnailSource: nil, contentType: nil)))),
+                eventContent: .message(.file(.init(filename: "brain-surgery.pdf",
+                                                   caption: "File: Crash course in brain surgery",
+                                                   source: nil,
+                                                   fileSize: nil,
+                                                   thumbnailSource: nil,
+                                                   contentType: nil)))),
         .loaded(sender: .init(id: "Cliff"),
                 eventID: "123",
-                eventContent: .message(.image(.init(body: "Image: Pushead",
-                                                    source: .init(url: .picturesDirectory, mimeType: nil),
-                                                    thumbnailSource: .init(url: .picturesDirectory, mimeType: nil))))),
+                eventContent: .message(.image(.init(filename: "head.png",
+                                                    caption: "Image: Pushead",
+                                                    imageInfo: .mockImage,
+                                                    thumbnailInfo: .mockThumbnail)))),
         .loaded(sender: .init(id: "Jason"),
                 eventID: "123",
                 eventContent: .message(.notice(.init(body: "Notice: Too far gone?")))),
@@ -226,10 +266,10 @@ struct MessageComposer_Previews: PreviewProvider, TestablePreview {
                 eventContent: .message(.text(.init(body: "Text: Where the wild things are")))),
         .loaded(sender: .init(id: "Lars"),
                 eventID: "123",
-                eventContent: .message(.video(.init(body: "Video: Through the never",
-                                                    duration: 100,
-                                                    source: nil,
-                                                    thumbnailSource: .init(url: .picturesDirectory, mimeType: nil))))),
+                eventContent: .message(.video(.init(filename: "never.mov",
+                                                    caption: "Video: Through the never",
+                                                    videoInfo: .mockVideo,
+                                                    thumbnailInfo: .mockVideoThumbnail)))),
         .loading(eventID: "")
     ]
     
@@ -247,6 +287,7 @@ struct MessageComposer_Previews: PreviewProvider, TestablePreview {
         
         return MessageComposer(plainComposerText: .constant(content),
                                presendCallback: .constant(nil),
+                               selectedRange: .constant(NSRange(location: 0, length: 0)),
                                composerView: composerView,
                                mode: mode,
                                composerFormattingEnabled: false,
@@ -264,20 +305,27 @@ struct MessageComposer_Previews: PreviewProvider, TestablePreview {
             messageComposer()
             
             messageComposer(.init(string: "Some message"),
-                            mode: .edit(originalItemId: .random))
+                            mode: .edit(originalEventOrTransactionID: .eventID(UUID().uuidString), type: .default))
             
-            messageComposer(mode: .reply(itemID: .random,
+            messageComposer(mode: .reply(eventID: UUID().uuidString,
                                          replyDetails: .loaded(sender: .init(id: "Kirk"),
                                                                eventID: "123",
                                                                eventContent: .message(.text(.init(body: "Text: Where the wild things are")))),
                                          isThread: false))
+            
+            Color.clear.frame(height: 20)
+            
+            messageComposer(.init(string: "Some new caption"),
+                            mode: .edit(originalEventOrTransactionID: .eventID(UUID().uuidString), type: .addCaption))
+            messageComposer(.init(string: "Some updated caption"),
+                            mode: .edit(originalEventOrTransactionID: .eventID(UUID().uuidString), type: .editCaption))
         }
         .padding(.horizontal)
         
         ScrollView {
             VStack(spacing: 8) {
                 ForEach(replyTypes, id: \.self) { replyDetails in
-                    messageComposer(mode: .reply(itemID: .random,
+                    messageComposer(mode: .reply(eventID: UUID().uuidString,
                                                  replyDetails: replyDetails, isThread: false))
                 }
             }
@@ -289,7 +337,7 @@ struct MessageComposer_Previews: PreviewProvider, TestablePreview {
         ScrollView {
             VStack(spacing: 8) {
                 ForEach(replyTypes, id: \.self) { replyDetails in
-                    messageComposer(mode: .reply(itemID: .random,
+                    messageComposer(mode: .reply(eventID: UUID().uuidString,
                                                  replyDetails: replyDetails, isThread: true))
                 }
             }

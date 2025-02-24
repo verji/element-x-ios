@@ -1,11 +1,12 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
+import MatrixRustSDK
 import SwiftUI
 import WysiwygComposer
 
@@ -52,6 +53,7 @@ enum ComposerToolbarViewAction {
     
     case plainComposerTextChanged
     case didToggleFormattingOptions
+    case selectedTextChanged
 }
 
 enum ComposerAttachmentType {
@@ -65,6 +67,8 @@ enum ComposerAttachmentType {
 struct ComposerToolbarViewState: BindableState {
     var composerMode: ComposerMode = .default
     var composerEmpty = true
+    /// Could be false if sending is disabled in the room
+    var canSend = true
     var suggestions: [SuggestionItem] = []
     var audioPlayerState: AudioPlayerState
     var audioRecorderState: AudioRecorderState
@@ -96,6 +100,10 @@ struct ComposerToolbarViewState: BindableState {
     }
     
     var sendButtonDisabled: Bool {
+        if !canSend {
+            return true
+        }
+        
         if case .previewVoiceMessage = composerMode {
             return false
         }
@@ -124,6 +132,7 @@ struct ComposerToolbarViewStateBindings {
     var composerExpanded = false
     var formatItems: [FormatItem] = .init()
     var alertInfo: AlertInfo<UUID>?
+    var selectedRange = NSRange(location: 0, length: 0)
     
     var presendCallback: (() -> Void)?
 }
@@ -283,9 +292,11 @@ extension FormatType {
 }
 
 enum ComposerMode: Equatable {
+    enum EditType { case `default`, addCaption, editCaption }
+    
     case `default`
-    case reply(itemID: TimelineItemIdentifier, replyDetails: TimelineItemReplyDetails, isThread: Bool)
-    case edit(originalItemId: TimelineItemIdentifier)
+    case reply(eventID: String, replyDetails: TimelineItemReplyDetails, isThread: Bool)
+    case edit(originalEventOrTransactionID: TimelineItemIdentifier.EventOrTransactionID, type: EditType)
     case recordVoiceMessage(state: AudioRecorderState)
     case previewVoiceMessage(state: AudioPlayerState, waveform: WaveformSource, isUploading: Bool)
 
@@ -323,8 +334,8 @@ enum ComposerMode: Equatable {
     
     var replyEventID: String? {
         switch self {
-        case .reply(let itemID, _, _):
-            return itemID.eventID
+        case .reply(let eventID, _, _):
+            return eventID
         default:
             return nil
         }

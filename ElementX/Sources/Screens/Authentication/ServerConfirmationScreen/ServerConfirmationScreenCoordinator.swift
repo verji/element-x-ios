@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -11,6 +11,8 @@ import SwiftUI
 struct ServerConfirmationScreenCoordinatorParameters {
     let authenticationService: AuthenticationServiceProtocol
     let authenticationFlow: AuthenticationFlow
+    let slidingSyncLearnMoreURL: URL
+    let userIndicatorController: UserIndicatorControllerProtocol
 }
 
 enum ServerConfirmationScreenCoordinatorAction {
@@ -29,7 +31,9 @@ final class ServerConfirmationScreenCoordinator: CoordinatorProtocol {
     
     init(parameters: ServerConfirmationScreenCoordinatorParameters) {
         viewModel = ServerConfirmationScreenViewModel(authenticationService: parameters.authenticationService,
-                                                      authenticationFlow: parameters.authenticationFlow)
+                                                      authenticationFlow: parameters.authenticationFlow,
+                                                      slidingSyncLearnMoreURL: parameters.slidingSyncLearnMoreURL,
+                                                      userIndicatorController: parameters.userIndicatorController)
     }
     
     func start() {

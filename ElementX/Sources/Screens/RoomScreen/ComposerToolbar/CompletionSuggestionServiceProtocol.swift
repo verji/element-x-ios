@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -45,13 +45,14 @@ struct MentionSuggestionItem: Identifiable, Equatable {
     let displayName: String?
     let avatarURL: URL?
     let range: NSRange
+    let rawSuggestionText: String
 }
 
 // sourcery: AutoMockable
 protocol CompletionSuggestionServiceProtocol {
     var suggestionsPublisher: AnyPublisher<[SuggestionItem], Never> { get }
     
-    func processTextMessage(_ textMessage: String?)
+    func processTextMessage(_ textMessage: String, selectedRange: NSRange)
     
     func setSuggestionTrigger(_ suggestionTrigger: SuggestionTrigger?)
 }

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -29,7 +29,7 @@ struct AppLockSetupSettingsScreen: View {
                 Section {
                     ListRow(label: .plain(title: context.viewState.enableBiometricsTitle),
                             kind: .toggle($context.enableBiometrics))
-                        .onChange(of: context.enableBiometrics) { _ in
+                        .onChange(of: context.enableBiometrics) {
                             context.send(viewAction: .enableBiometricsChanged)
                         }
                 }

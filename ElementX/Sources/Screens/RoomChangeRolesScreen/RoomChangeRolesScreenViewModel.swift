@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -143,7 +143,8 @@ class RoomChangeRolesScreenViewModel: RoomChangeRolesScreenViewModelType, RoomCh
         let demotingUpdates = state.membersToDemote.map { ($0.id, Int64(0)) }
         
         // A task we can await until the room's info gets modified with the new power levels.
-        let infoTask = Task { await roomProxy.actionsPublisher.values.first { $0 == .roomInfoUpdate } }
+        // Note: Ignore the first value as the publisher is backed by a current value subject.
+        let infoTask = Task { await roomProxy.infoPublisher.dropFirst().values.first { _ in true } }
         
         switch await roomProxy.updatePowerLevelsForUsers(promotingUpdates + demotingUpdates) {
         case .success:

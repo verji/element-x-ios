@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -20,6 +20,7 @@ class SettingsScreenViewModel: SettingsScreenViewModelType, SettingsScreenViewMo
     init(userSession: UserSessionProtocol) {
         super.init(initialViewState: .init(deviceID: userSession.clientProxy.deviceID,
                                            userID: userSession.clientProxy.userID,
+                                           showAccountDeactivation: userSession.clientProxy.canDeactivateAccount,
                                            showDeveloperOptions: AppSettings.isDevelopmentBuild),
                    mediaProvider: userSession.mediaProvider)
         
@@ -105,6 +106,8 @@ class SettingsScreenViewModel: SettingsScreenViewModelType, SettingsScreenViewMo
             state.showDeveloperOptions = true
         case .developerOptions:
             actionsSubject.send(.developerOptions)
+        case .deactivateAccount:
+            actionsSubject.send(.deactivateAccount)
         }
     }
 }

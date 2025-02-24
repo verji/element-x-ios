@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -86,7 +86,7 @@ struct NotificationSettingsScreen: View {
         Section {
             ListRow(label: .plain(title: L10n.screenNotificationSettingsEnableNotifications),
                     kind: .toggle($context.enableNotifications))
-                .onChange(of: context.enableNotifications) { _ in
+                .onChange(of: context.enableNotifications) {
                     context.send(viewAction: .changedEnableNotifications)
                 }
         }
@@ -128,7 +128,7 @@ struct NotificationSettingsScreen: View {
                     kind: .toggle($context.roomMentionsEnabled))
                 .disabled(context.viewState.settings?.roomMentionsEnabled == nil)
                 .allowsHitTesting(!context.viewState.applyingChange)
-                .onChange(of: context.roomMentionsEnabled) { _ in
+                .onChange(of: context.roomMentionsEnabled) {
                     context.send(viewAction: .roomMentionChanged)
                 }
         } header: {
@@ -143,7 +143,7 @@ struct NotificationSettingsScreen: View {
                     kind: .toggle($context.callsEnabled))
                 .disabled(context.viewState.settings?.callsEnabled == nil)
                 .allowsHitTesting(!context.viewState.applyingChange)
-                .onChange(of: context.callsEnabled) { _ in
+                .onChange(of: context.callsEnabled) {
                     context.send(viewAction: .callsChanged)
                 }
         } header: {
@@ -158,7 +158,7 @@ struct NotificationSettingsScreen: View {
                     kind: .toggle($context.invitationsEnabled))
                 .disabled(context.viewState.settings?.invitationsEnabled == nil)
                 .allowsHitTesting(!context.viewState.applyingChange)
-                .onChange(of: context.invitationsEnabled) { _ in
+                .onChange(of: context.invitationsEnabled) {
                     context.send(viewAction: .invitationsChanged)
                 }
         } header: {
@@ -253,9 +253,14 @@ struct NotificationSettingsScreen_Previews: PreviewProvider, TestablePreview {
 
     static var previews: some View {
         NotificationSettingsScreen(context: viewModel.context)
-            .snapshot(delay: 2.0)
+            .snapshotPreferences(expect: viewModel.context.$viewState.map { state in
+                state.settings != nil
+            })
+        
         NotificationSettingsScreen(context: viewModelConfigurationMismatch.context)
-            .snapshot(delay: 2.0)
+            .snapshotPreferences(expect: viewModelConfigurationMismatch.context.$viewState.map { state in
+                state.settings != nil
+            })
             .previewDisplayName("Configuration mismatch")
     }
 }

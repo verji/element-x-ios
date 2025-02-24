@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -37,8 +37,7 @@ class RoomRolesAndPermissionsScreenViewModel: RoomRolesAndPermissionsScreenViewM
         updateMembers(roomProxy.membersPublisher.value)
         
         // Automatically update the room permissions
-        roomProxy.actionsPublisher
-            .filter { $0 == .roomInfoUpdate }
+        roomProxy.infoPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { await self?.updatePermissions() }
@@ -93,7 +92,8 @@ class RoomRolesAndPermissionsScreenViewModel: RoomRolesAndPermissionsScreenViewM
         showSavingIndicator()
         
         // A task we can await until the room's info gets modified with the new power levels.
-        let infoTask = Task { await roomProxy.actionsPublisher.values.first { $0 == .roomInfoUpdate } }
+        // Note: Ignore the first value as the publisher is backed by a current value subject.
+        let infoTask = Task { await roomProxy.infoPublisher.dropFirst().values.first { _ in true } }
         
         switch await roomProxy.updatePowerLevelsForUsers([(userID: roomProxy.ownUserID, powerLevel: role.rustPowerLevel)]) {
         case .success:

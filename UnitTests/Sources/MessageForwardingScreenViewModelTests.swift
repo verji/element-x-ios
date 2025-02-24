@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -12,7 +12,7 @@ import XCTest
 
 @MainActor
 class MessageForwardingScreenViewModelTests: XCTestCase {
-    let forwardingItem = MessageForwardingItem(id: .init(timelineID: "t1", eventID: "t1"),
+    let forwardingItem = MessageForwardingItem(id: .event(uniqueID: .init("t1"), eventOrTransactionID: .eventID("t1")),
                                                roomID: "1",
                                                content: .init(noPointer: .init()))
     var viewModel: MessageForwardingScreenViewModelProtocol!
@@ -29,12 +29,12 @@ class MessageForwardingScreenViewModelTests: XCTestCase {
                                                      clientProxy: clientProxy,
                                                      roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(.mockRooms))),
                                                      userIndicatorController: UserIndicatorControllerMock(),
-                                                     mediaProvider: MockMediaProvider())
+                                                     mediaProvider: MediaProviderMock(configuration: .init()))
         context = viewModel.context
     }
     
     func testInitialState() {
-        XCTAssertNil(context.viewState.rooms.first(where: { $0.id == forwardingItem.roomID }), "The source room ID shouldn't be shown")
+        XCTAssertNil(context.viewState.rooms.first { $0.id == forwardingItem.roomID }, "The source room ID shouldn't be shown")
     }
     
     func testRoomSelection() {

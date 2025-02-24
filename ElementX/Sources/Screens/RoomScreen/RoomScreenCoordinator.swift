@@ -1,19 +1,22 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
+import Compound
 import HTMLParser
 import SwiftUI
 import WysiwygComposer
 
 struct RoomScreenCoordinatorParameters {
+    let clientProxy: ClientProxyProtocol
     let roomProxy: JoinedRoomProxyProtocol
     var focussedEvent: FocusEvent?
-    let timelineController: RoomTimelineControllerProtocol
+    var sharedText: String?
+    let timelineController: TimelineControllerProtocol
     let mediaProvider: MediaProviderProtocol
     let mediaPlayerProvider: MediaPlayerProviderProtocol
     let voiceMessageMediaManager: VoiceMessageMediaManagerProtocol
@@ -23,6 +26,7 @@ struct RoomScreenCoordinatorParameters {
     let appMediator: AppMediatorProtocol
     let appSettings: AppSettings
     let composerDraftService: ComposerDraftServiceProtocol
+    let timelineControllerFactory: TimelineControllerFactoryProtocol
 }
 
 enum RoomScreenCoordinatorAction {
@@ -38,6 +42,8 @@ enum RoomScreenCoordinatorAction {
     case presentMessageForwarding(forwardingItem: MessageForwardingItem)
     case presentCallScreen
     case presentPinnedEventsTimeline
+    case presentResolveSendFailure(failure: TimelineItemSendFailure.VerifiedUser, sendHandle: SendHandleProxy)
+    case presentKnockRequestsList
 }
 
 final class RoomScreenCoordinator: CoordinatorProtocol {
@@ -59,13 +65,15 @@ final class RoomScreenCoordinator: CoordinatorProtocol {
             selectedPinnedEventID = focussedEvent.shouldSetPin ? focussedEvent.eventID : nil
         }
         
-        roomViewModel = RoomScreenViewModel(roomProxy: parameters.roomProxy,
+        roomViewModel = RoomScreenViewModel(clientProxy: parameters.clientProxy,
+                                            roomProxy: parameters.roomProxy,
                                             initialSelectedPinnedEventID: selectedPinnedEventID,
                                             mediaProvider: parameters.mediaProvider,
                                             ongoingCallRoomIDPublisher: parameters.ongoingCallRoomIDPublisher,
                                             appMediator: parameters.appMediator,
                                             appSettings: ServiceLocator.shared.settings,
-                                            analyticsService: ServiceLocator.shared.analytics)
+                                            analyticsService: ServiceLocator.shared.analytics,
+                                            userIndicatorController: ServiceLocator.shared.userIndicatorController)
         
         timelineViewModel = TimelineViewModel(roomProxy: parameters.roomProxy,
                                               focussedEventID: parameters.focussedEvent?.eventID,
@@ -76,13 +84,17 @@ final class RoomScreenCoordinator: CoordinatorProtocol {
                                               userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                               appMediator: parameters.appMediator,
                                               appSettings: parameters.appSettings,
-                                              analyticsService: ServiceLocator.shared.analytics)
+                                              analyticsService: ServiceLocator.shared.analytics,
+                                              emojiProvider: parameters.emojiProvider,
+                                              timelineControllerFactory: parameters.timelineControllerFactory)
 
         wysiwygViewModel = WysiwygComposerViewModel(minHeight: ComposerConstant.minHeight,
                                                     maxCompressedHeight: ComposerConstant.maxHeight,
                                                     maxExpandedHeight: ComposerConstant.maxHeight,
                                                     parserStyle: .elementX)
-        let composerViewModel = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+        let composerViewModel = ComposerToolbarViewModel(initialText: parameters.sharedText,
+                                                         roomProxy: parameters.roomProxy,
+                                                         wysiwygViewModel: wysiwygViewModel,
                                                          completionSuggestionService: parameters.completionSuggestionService,
                                                          mediaProvider: parameters.mediaProvider,
                                                          mentionDisplayHelper: ComposerMentionDisplayHelper(timelineContext: timelineViewModel.context),
@@ -114,6 +126,8 @@ final class RoomScreenCoordinator: CoordinatorProtocol {
                     actionsSubject.send(.presentMediaUploadPicker(.photoLibrary))
                 case .displayDocumentPicker:
                     actionsSubject.send(.presentMediaUploadPicker(.documents))
+                case .displayMediaPreview(let mediaPreviewViewModel):
+                    roomViewModel.displayMediaPreview(mediaPreviewViewModel)
                 case .displayLocationPicker:
                     actionsSubject.send(.presentLocationPicker)
                 case .displayPollForm(let mode):
@@ -126,6 +140,8 @@ final class RoomScreenCoordinator: CoordinatorProtocol {
                     actionsSubject.send(.presentMessageForwarding(forwardingItem: forwardingItem))
                 case .displayLocation(let body, let geoURI, let description):
                     actionsSubject.send(.presentLocationViewer(body: body, geoURI: geoURI, description: description))
+                case .displayResolveSendFailure(let failure, let sendHandle):
+                    actionsSubject.send(.presentResolveSendFailure(failure: failure, sendHandle: sendHandle))
                 case .composer(let action):
                     composerViewModel.process(timelineAction: action)
                 case .hasScrolled(direction: let direction):
@@ -145,10 +161,10 @@ final class RoomScreenCoordinator: CoordinatorProtocol {
             .store(in: &cancellables)
         
         roomViewModel.actions
-            .sink { [weak self] actions in
+            .sink { [weak self] action in
                 guard let self else { return }
                 
-                switch actions {
+                switch action {
                 case .focusEvent(eventID: let eventID):
                     focusOnEvent(FocusEvent(eventID: eventID, shouldSetPin: false))
                 case .displayPinnedEventsTimeline:
@@ -159,12 +175,14 @@ final class RoomScreenCoordinator: CoordinatorProtocol {
                     actionsSubject.send(.presentCallScreen)
                 case .removeComposerFocus:
                     composerViewModel.process(timelineAction: .removeFocus)
+                case .displayKnockRequests:
+                    actionsSubject.send(.presentKnockRequestsList)
                 }
             }
             .store(in: &cancellables)
         
         // Loading the draft requires the subscriptions to be set up first otherwise the room won't be be able to propagate the information to the composer.
-        composerViewModel.loadDraft()
+        Task { await composerViewModel.loadDraft() }
     }
     
     func focusOnEvent(_ focussedEvent: FocusEvent) {
@@ -175,9 +193,15 @@ final class RoomScreenCoordinator: CoordinatorProtocol {
         Task { await timelineViewModel.focusOnEvent(eventID: eventID) }
     }
     
+    func shareText(_ string: String) {
+        composerViewModel.process(timelineAction: .setMode(mode: .default)) // Make sure we're not e.g. replying.
+        composerViewModel.process(timelineAction: .setText(plainText: string, htmlText: nil))
+        composerViewModel.process(timelineAction: .setFocus)
+    }
+    
     func stop() {
         composerViewModel.saveDraft()
-        timelineViewModel.stop()
+        roomViewModel.stop()
     }
     
     func toPresentable() -> AnyView {
@@ -204,14 +228,14 @@ enum ComposerConstant {
 private extension HTMLParserStyle {
     static let elementX = HTMLParserStyle(textColor: UIColor.label,
                                           linkColor: UIColor.link,
-                                          codeBlockStyle: BlockStyle(backgroundColor: UIColor(.compound._bgCodeBlock),
-                                                                     borderColor: UIColor(.compound.borderInteractiveSecondary),
+                                          codeBlockStyle: BlockStyle(backgroundColor: UIColor.compound._bgCodeBlock,
+                                                                     borderColor: UIColor.compound.borderInteractiveSecondary,
                                                                      borderWidth: 1.0,
                                                                      cornerRadius: 2.0,
                                                                      padding: BlockStyle.Padding(horizontal: 10, vertical: 12),
                                                                      type: .background),
-                                          quoteBlockStyle: BlockStyle(backgroundColor: UIColor(.compound.iconTertiary),
-                                                                      borderColor: UIColor(.compound.borderInteractiveSecondary),
+                                          quoteBlockStyle: BlockStyle(backgroundColor: UIColor.compound.iconTertiary,
+                                                                      borderColor: UIColor.compound.borderInteractiveSecondary,
                                                                       borderWidth: 0.0,
                                                                       cornerRadius: 0.0,
                                                                       padding: BlockStyle.Padding(horizontal: 25, vertical: 12),

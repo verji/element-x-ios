@@ -1,14 +1,15 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
 
 @testable import ElementX
 
+@MainActor
 class ServerConfirmationScreenViewStateTests: XCTestCase {
     func testLoginMessageString() {
         let matrixDotOrgLogin = ServerConfirmationScreenViewState(homeserverAddress: LoginHomeserver.mockMatrixDotOrg.address,
@@ -25,12 +26,12 @@ class ServerConfirmationScreenViewStateTests: XCTestCase {
     }
     
     func testRegisterMessageString() {
-        let matrixDotOrgLogin = ServerConfirmationScreenViewState(homeserverAddress: LoginHomeserver.mockMatrixDotOrg.address,
-                                                                  authenticationFlow: .register)
-        XCTAssertEqual(matrixDotOrgLogin.message, L10n.screenServerConfirmationMessageRegister, "The registration message should always be the same.")
+        let matrixDotOrgRegister = ServerConfirmationScreenViewState(homeserverAddress: LoginHomeserver.mockMatrixDotOrg.address,
+                                                                     authenticationFlow: .register)
+        XCTAssertEqual(matrixDotOrgRegister.message, L10n.screenServerConfirmationMessageRegister, "The registration message should always be the same.")
         
-        let otherLogin = ServerConfirmationScreenViewState(homeserverAddress: LoginHomeserver.mockOIDC.address,
-                                                           authenticationFlow: .register)
-        XCTAssertEqual(otherLogin.message, L10n.screenServerConfirmationMessageRegister, "The registration message should always be the same.")
+        let oidcRegister = ServerConfirmationScreenViewState(homeserverAddress: LoginHomeserver.mockOIDC.address,
+                                                             authenticationFlow: .register)
+        XCTAssertEqual(oidcRegister.message, L10n.screenServerConfirmationMessageRegister, "The registration message should always be the same.")
     }
 }

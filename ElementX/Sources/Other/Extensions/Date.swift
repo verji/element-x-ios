@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -31,5 +31,15 @@ extension Date {
             // The day, month and year if it is any older.
             return formatted(.dateTime.year().day().month())
         }
+    }
+    
+    /// The date formatted as just the time, for use in timeline items specifically.
+    func formattedTime() -> String {
+        formatted(date: .omitted, time: .shortened)
+    }
+    
+    /// A fixed date used for mocks, previews etc.
+    static var mock: Date {
+        DateComponents(calendar: .current, year: 2007, month: 1, day: 9, hour: 9, minute: 41).date ?? .now
     }
 }

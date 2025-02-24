@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import MatrixRustSDK
@@ -58,7 +58,7 @@ class RoomDetailsEditScreenViewModelTests: XCTestCase {
     }
     
     func testAvatarDidChange() {
-        setupViewModel(roomProxyConfiguration: .init(name: "Some room", avatarURL: .picturesDirectory, members: [.mockMeAdmin]))
+        setupViewModel(roomProxyConfiguration: .init(name: "Some room", avatarURL: .mockMXCAvatar, members: [.mockMeAdmin]))
         context.send(viewAction: .removeImage)
         XCTAssertTrue(context.viewState.avatarDidChange)
         XCTAssertTrue(context.viewState.canSave)
@@ -100,7 +100,7 @@ class RoomDetailsEditScreenViewModelTests: XCTestCase {
     }
     
     func testDeleteAvatar() {
-        setupViewModel(roomProxyConfiguration: .init(name: "Some room", avatarURL: .picturesDirectory, members: [.mockMeAdmin]))
+        setupViewModel(roomProxyConfiguration: .init(name: "Some room", avatarURL: .mockMXCAvatar, members: [.mockMeAdmin]))
         XCTAssertNotNil(context.viewState.avatarURL)
         context.send(viewAction: .removeImage)
         XCTAssertNil(context.viewState.avatarURL)
@@ -111,7 +111,8 @@ class RoomDetailsEditScreenViewModelTests: XCTestCase {
     private func setupViewModel(roomProxyConfiguration: JoinedRoomProxyMockConfiguration) {
         userIndicatorController = UserIndicatorControllerMock.default
         viewModel = .init(roomProxy: JoinedRoomProxyMock(roomProxyConfiguration),
-                          mediaProvider: MockMediaProvider(),
+                          mediaProvider: MediaProviderMock(configuration: .init()),
+                          mediaUploadingPreprocessor: MediaUploadingPreprocessor(appSettings: ServiceLocator.shared.settings),
                           userIndicatorController: userIndicatorController)
     }
 }

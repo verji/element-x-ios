@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -99,6 +99,14 @@ struct AuthenticationStartScreen: View {
             }
             .buttonStyle(.compound(.primary))
             .accessibilityIdentifier(A11yIdentifiers.authenticationStartScreen.signIn)
+            
+            if context.viewState.isWebRegistrationEnabled {
+                Button { context.send(viewAction: .register) } label: {
+                    Text(L10n.screenCreateAccountTitle)
+                        .padding(14)
+                }
+                .buttonStyle(.compound(.plain))
+            }
         }
         .padding(.horizontal, verticalSizeClass == .compact ? 128 : 24)
         .readableFrame()
@@ -108,7 +116,7 @@ struct AuthenticationStartScreen: View {
 // MARK: - Previews
 
 struct AuthenticationStartScreen_Previews: PreviewProvider, TestablePreview {
-    static let viewModel = AuthenticationStartScreenViewModel()
+    static let viewModel = AuthenticationStartScreenViewModel(webRegistrationEnabled: true)
     
     static var previews: some View {
         AuthenticationStartScreen(context: viewModel.context)

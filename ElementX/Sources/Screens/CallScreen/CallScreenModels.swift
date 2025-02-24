@@ -1,15 +1,16 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import AVKit
 import Foundation
 
 enum CallScreenViewModelAction {
-    case pictureInPictureStarted(AVPictureInPictureController)
+    case pictureInPictureIsAvailable(AVPictureInPictureController)
+    case pictureInPictureStarted
     case pictureInPictureStopped
     case dismiss
 }
@@ -27,13 +28,14 @@ struct CallScreenViewState: BindableState {
 struct Bindings {
     var javaScriptMessageHandler: ((Any) -> Void)?
     var javaScriptEvaluator: ((String) async throws -> Any)?
-    var requestPictureInPictureHandler: (() async -> Result<AVPictureInPictureController, CallScreenError>)?
+    var requestPictureInPictureHandler: (() async -> Result<Void, CallScreenError>)?
     
     var alertInfo: AlertInfo<UUID>?
 }
 
 enum CallScreenViewAction {
     case urlChanged(URL?)
+    case pictureInPictureIsAvailable(AVPictureInPictureController)
     case navigateBack
     case pictureInPictureWillStop
     case endCall

@@ -1,21 +1,21 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
 import SwiftUI
 
-@MainActor
 /// A notification center that can be injected in the app to post notifications
 /// that are sent from the UI tests runner. Usage:
 /// - Create an instance of the center in the screen you want to test and call `startListening`.
 /// - Create a `UITestSignalling.Client` in the `.tests` mode in your tests.
 /// - Start the app from the tests and call `client.waitForApp()` to establish communication.
 /// - Send the notification from the tests you would like posted in the app.
-class UITestsNotificationCenter: NotificationCenter {
+@MainActor
+class UITestsNotificationCenter: NotificationCenter, @unchecked Sendable {
     // periphery:ignore - retaining purpose
     private var client: UITestsSignalling.Client?
     private var signalCancellable: AnyCancellable?

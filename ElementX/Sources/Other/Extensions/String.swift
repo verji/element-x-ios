@@ -1,11 +1,12 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 extension String {
     /// Returns the string as an `AttributedString` with the specified character tinted in a different color.
@@ -88,5 +89,32 @@ extension String {
         }
         
         return result
+    }
+}
+
+extension String {
+    /// detects if the string is empty or contains only whitespaces and newlines
+    var isBlank: Bool {
+        trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+extension String {
+    static func makeCanonicalAlias(aliasLocalPart: Self?, serverName: Self?) -> Self? {
+        guard let aliasLocalPart, !aliasLocalPart.isEmpty,
+              let serverName, !serverName.isEmpty else {
+            return nil
+        }
+        return "#\(aliasLocalPart):\(serverName)"
+    }
+}
+
+extension String {
+    var validatedFileExtension: String {
+        let fileExtension = (self as NSString).pathExtension
+        guard !fileExtension.isEmpty else {
+            return "bin"
+        }
+        return UTType(filenameExtension: fileExtension) != nil ? fileExtension : "bin"
     }
 }

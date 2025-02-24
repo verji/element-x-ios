@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -51,7 +51,7 @@ class VoiceMessageMediaManager: VoiceMessageMediaManagerProtocol {
         }
                 
         // Otherwise, load the file from source
-        guard case .success(let fileHandle) = await mediaProvider.loadFileFromSource(source, body: body) else {
+        guard case .success(let fileHandle) = await mediaProvider.loadFileFromSource(source, filename: body) else {
             throw MediaProviderError.failedRetrievingFile
         }
         

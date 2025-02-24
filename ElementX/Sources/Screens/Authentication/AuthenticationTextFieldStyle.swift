@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -68,7 +68,7 @@ public struct AuthenticationTextFieldStyle: TextFieldStyle {
     
     /// The color of the placeholder text inside the text field.
     private var placeholderColor: UIColor {
-        .compound.textPlaceholder
+        .compound.textSecondary
     }
     
     /// The color of the label above the text field.

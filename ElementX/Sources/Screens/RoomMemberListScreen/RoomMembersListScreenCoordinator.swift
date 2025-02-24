@@ -1,16 +1,17 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
 import SwiftUI
 
 struct RoomMembersListScreenCoordinatorParameters {
-    let mediaProvider: MediaProviderProtocol
+    let clientProxy: ClientProxyProtocol
     let roomProxy: JoinedRoomProxyProtocol
+    let mediaProvider: MediaProviderProtocol
     let userIndicatorController: UserIndicatorControllerProtocol
     let analytics: AnalyticsService
 }
@@ -31,7 +32,8 @@ final class RoomMembersListScreenCoordinator: CoordinatorProtocol {
     }
     
     init(parameters: RoomMembersListScreenCoordinatorParameters) {
-        viewModel = RoomMembersListScreenViewModel(roomProxy: parameters.roomProxy,
+        viewModel = RoomMembersListScreenViewModel(clientProxy: parameters.clientProxy,
+                                                   roomProxy: parameters.roomProxy,
                                                    mediaProvider: parameters.mediaProvider,
                                                    userIndicatorController: parameters.userIndicatorController,
                                                    analytics: parameters.analytics)

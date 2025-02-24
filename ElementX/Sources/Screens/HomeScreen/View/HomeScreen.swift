@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -188,44 +188,40 @@ struct HomeScreen: View {
 // MARK: - Previews
 
 struct HomeScreen_Previews: PreviewProvider, TestablePreview {
-    static let migratingViewModel = viewModel(.migration)
     static let loadingViewModel = viewModel(.skeletons)
     static let emptyViewModel = viewModel(.empty)
     static let loadedViewModel = viewModel(.rooms)
     
     static var previews: some View {
         NavigationStack {
-            HomeScreen(context: migratingViewModel.context)
-        }
-        .previewDisplayName("Migrating")
-        
-        NavigationStack {
             HomeScreen(context: loadingViewModel.context)
         }
+        .snapshotPreferences(expect: loadedViewModel.context.$viewState.map { state in
+            state.roomListMode == .skeletons
+        })
         .previewDisplayName("Loading")
         
         NavigationStack {
             HomeScreen(context: emptyViewModel.context)
         }
+        .snapshotPreferences(expect: emptyViewModel.context.$viewState.map { state in
+            state.roomListMode == .empty
+        })
         .previewDisplayName("Empty")
-        .snapshot(delay: 4.0)
         
         NavigationStack {
             HomeScreen(context: loadedViewModel.context)
         }
+        .snapshotPreferences(expect: loadedViewModel.context.$viewState.map { state in
+            state.roomListMode == .rooms
+        })
         .previewDisplayName("Loaded")
-        .snapshot(delay: 4.0)
     }
     
     static func viewModel(_ mode: HomeScreenRoomListMode) -> HomeScreenViewModel {
-        let userID = mode == .migration ? "@unmigrated_alice:example.com" : "@alice:example.com"
-        
-        let appSettings = AppSettings() // This uses shared storage under the hood
-        appSettings.migratedAccounts[userID] = mode != .migration
+        let userID = "@alice:example.com"
         
         let roomSummaryProviderState: RoomSummaryProviderMockConfigurationState = switch mode {
-        case .migration:
-            .loading
         case .skeletons:
             .loading
         case .empty:
@@ -241,7 +237,7 @@ struct HomeScreen_Previews: PreviewProvider, TestablePreview {
         
         return HomeScreenViewModel(userSession: userSession,
                                    analyticsService: ServiceLocator.shared.analytics,
-                                   appSettings: appSettings,
+                                   appSettings: ServiceLocator.shared.settings,
                                    selectedRoomPublisher: CurrentValueSubject<String?, Never>(nil).asCurrentValuePublisher(),
                                    userIndicatorController: ServiceLocator.shared.userIndicatorController)
     }

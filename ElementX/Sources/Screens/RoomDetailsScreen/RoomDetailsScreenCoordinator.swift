@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -22,6 +22,7 @@ struct RoomDetailsScreenCoordinatorParameters {
 enum RoomDetailsScreenCoordinatorAction {
     case leftRoom
     case presentRoomMembersList
+    case presentRecipientDetails(userID: String)
     case presentRoomDetailsEditScreen
     case presentNotificationSettingsScreen
     case presentInviteUsersScreen
@@ -29,6 +30,9 @@ enum RoomDetailsScreenCoordinatorAction {
     case presentRolesAndPermissionsScreen
     case presentCall
     case presentPinnedEventsTimeline
+    case presentMediaEventsTimeline
+    case presentKnockingRequestsListScreen
+    case presentSecurityAndPrivacyScreen
 }
 
 final class RoomDetailsScreenCoordinator: CoordinatorProtocol {
@@ -79,6 +83,14 @@ final class RoomDetailsScreenCoordinator: CoordinatorProtocol {
                     actionsSubject.send(.presentCall)
                 case .displayPinnedEventsTimeline:
                     actionsSubject.send(.presentPinnedEventsTimeline)
+                case .displayMediaEventsTimeline:
+                    actionsSubject.send(.presentMediaEventsTimeline)
+                case .displayKnockingRequests:
+                    actionsSubject.send(.presentKnockingRequestsListScreen)
+                case .displaySecurityAndPrivacy:
+                    actionsSubject.send(.presentSecurityAndPrivacyScreen)
+                case .requestRecipientDetailsPresentation(let userID):
+                    actionsSubject.send(.presentRecipientDetails(userID: userID))
                 }
             }
             .store(in: &cancellables)

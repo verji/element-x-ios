@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import PhotosUI
@@ -69,7 +69,7 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
                 photoLibraryPicker.userIndicatorController.retractIndicatorWithId(Self.loadingIndicatorIdentifier)
             }
             
-            provider.loadFileRepresentation(forTypeIdentifier: contentType.identifier) { [weak self] url, error in
+            provider.loadFileRepresentation(forTypeIdentifier: contentType.type.identifier) { [weak self] url, error in
                 guard let url else {
                     Task { @MainActor in
                         self?.photoLibraryPicker.callback(.error(.failedLoadingFileRepresentation(error)))

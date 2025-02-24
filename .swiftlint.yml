@@ -9,6 +9,7 @@ opt_in_rules:
   - private_action
   - explicit_init
   - shorthand_optional_binding
+  - trailing_closure
 
 included:
   - ElementX
@@ -40,6 +41,10 @@ function_body_length:
   warning: 100
   error: 100
 
+function_parameter_count:
+  warning: 10
+  error: 10
+
 cyclomatic_complexity:
   ignores_case_statements: true
 
@@ -58,6 +63,12 @@ custom_rules:
     regex: "(?-s)HStack((?!spacing:).)*\\s*\\{"
     match_kinds: identifier
     message: "Please use explicit spacing in HStacks."
+    severity: warning
+
+  compound_color_conversion:
+    regex: "UIColor\\(\\.compound"
+    match_kinds: identifier
+    message: "Please use the UIColor token directly to ensure the colour scheme is honoured."
     severity: warning
 
   print_deprecation:

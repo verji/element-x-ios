@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -32,6 +32,8 @@ struct HomeScreenRoomList: View {
                     .redacted(reason: .placeholder)
             case .invite:
                 HomeScreenInviteCell(room: room, context: context)
+            case .knock:
+                HomeScreenKnockedCell(room: room, context: context)
             case .room:
                 let isSelected = context.viewState.selectedRoomID == room.id
                 

@@ -1,11 +1,12 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
+import Foundation
 
 struct BugReportFlowCoordinatorParameters {
     enum PresentationMode {
@@ -93,12 +94,22 @@ class BugReportFlowCoordinator: FlowCoordinatorProtocol {
             
             switch action {
             case .done:
-                internalNavigationStackCoordinator?.pop()
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    internalNavigationStackCoordinator?.setSheetCoordinator(nil)
+                } else {
+                    internalNavigationStackCoordinator?.pop()
+                }
             }
         }
         .store(in: &cancellables)
         
-        internalNavigationStackCoordinator?.push(coordinator)
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            // On macOS the QuickLook is a separate window, closing a pushed QuickLook
+            // controller closes the whole Settings sheet so lets add another one.
+            internalNavigationStackCoordinator?.setSheetCoordinator(coordinator)
+        } else {
+            internalNavigationStackCoordinator?.push(coordinator)
+        }
     }
     
     private func dismiss() {

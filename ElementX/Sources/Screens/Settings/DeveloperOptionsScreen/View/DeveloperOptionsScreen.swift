@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -23,26 +23,20 @@ struct DeveloperOptionsScreen: View {
                 LogLevelConfigurationView(logLevel: $context.logLevel)
             }
             
-            Section {
-                Picker("Discovery", selection: $context.slidingSyncDiscovery) {
-                    Text("Proxy only").tag(AppSettings.SlidingSyncDiscovery.proxy)
-                    Text("Automatic").tag(AppSettings.SlidingSyncDiscovery.native)
-                    Text("Force Native ⚠️").tag(AppSettings.SlidingSyncDiscovery.forceNative)
+            Section("General") {
+                Toggle(isOn: $context.eventCacheEnabled) {
+                    Text("Event cache")
                 }
-            } header: {
-                Text("Sliding Sync")
-            } footer: {
-                Text(context.viewState.slidingSyncFooter)
-            }
-            
-            Section("Message Pinning") {
-                Toggle(isOn: $context.pinningEnabled) {
-                    Text("Enable message pinning")
-                    Text("Requires app reboot")
+                .onChange(of: context.eventCacheEnabled) {
+                    context.send(viewAction: .clearCache)
                 }
             }
             
             Section("Room List") {
+                Toggle(isOn: $context.publicSearchEnabled) {
+                    Text("Public search")
+                }
+                
                 Toggle(isOn: $context.hideUnreadMessagesBadge) {
                     Text("Hide grey dots")
                 }
@@ -52,6 +46,30 @@ struct DeveloperOptionsScreen: View {
                 }
             }
             
+            Section("Room") {
+                Toggle(isOn: $context.hideTimelineMedia) {
+                    Text("Hide image & video previews")
+                }
+            }
+            
+            Section("Join rules") {
+                Toggle(isOn: $context.knockingEnabled) {
+                    Text("Knocking")
+                    Text("Ask to join rooms")
+                }
+            }
+            
+            Section {
+                Toggle(isOn: $context.enableOnlySignedDeviceIsolationMode) {
+                    Text("Exclude insecure devices when sending/receiving messages")
+                    Text("Requires app reboot")
+                }
+            } header: {
+                Text("Trust and Decoration")
+            } footer: {
+                Text("This setting controls how end-to-end encryption (E2EE) keys are exchanged. Enabling it will prevent the inclusion of devices that have not been explicitly verified by their owners.")
+            }
+
             Section {
                 TextField(context.viewState.elementCallBaseURL.absoluteString, text: $elementCallURLOverrideString)
                     .autocorrectionDisabled(true)
@@ -122,19 +140,7 @@ struct DeveloperOptionsScreen: View {
 }
 
 private struct LogLevelConfigurationView: View {
-    @Binding var logLevel: TracingConfiguration.LogLevel
-    
-    @State private var customTracingConfiguration: String
-
-    init(logLevel: Binding<TracingConfiguration.LogLevel>) {
-        _logLevel = logLevel
-        
-        if case .custom(let configuration) = logLevel.wrappedValue {
-            customTracingConfiguration = configuration
-        } else {
-            customTracingConfiguration = TracingConfiguration(logLevel: .info, target: nil).filter
-        }
-    }
+    @Binding var logLevel: LogLevel
     
     var body: some View {
         Picker(selection: $logLevel) {
@@ -145,24 +151,11 @@ private struct LogLevelConfigurationView: View {
             Text("Log level")
             Text("Requires app reboot")
         }
-        
-        if case .custom = logLevel {
-            TextEditor(text: $customTracingConfiguration)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .onChange(of: customTracingConfiguration) { newValue in
-                    logLevel = .custom(newValue)
-                }
-        }
     }
     
     /// Allows the picker to work with associated values
-    private var logLevels: [TracingConfiguration.LogLevel] {
-        if case let .custom(filter) = logLevel {
-            return [.error, .warn, .info, .debug, .trace, .custom(filter)]
-        } else {
-            return [.error, .warn, .info, .debug, .trace, .custom("")]
-        }
+    private var logLevels: [LogLevel] {
+        [.error, .warn, .info, .debug, .trace]
     }
 }
 
@@ -170,8 +163,7 @@ private struct LogLevelConfigurationView: View {
 
 struct DeveloperOptionsScreen_Previews: PreviewProvider {
     static let viewModel = DeveloperOptionsScreenViewModel(developerOptions: ServiceLocator.shared.settings,
-                                                           elementCallBaseURL: ServiceLocator.shared.settings.elementCallBaseURL,
-                                                           isUsingNativeSlidingSync: true)
+                                                           elementCallBaseURL: ServiceLocator.shared.settings.elementCallBaseURL)
     static var previews: some View {
         NavigationStack {
             DeveloperOptionsScreen(context: viewModel.context)

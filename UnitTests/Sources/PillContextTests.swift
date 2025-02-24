@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -18,14 +18,16 @@ class PillContextTests: XCTestCase {
         let subject = CurrentValueSubject<[RoomMemberProxyProtocol], Never>([])
         proxyMock.membersPublisher = subject.asCurrentValuePublisher()
         let mock = TimelineViewModel(roomProxy: proxyMock,
-                                     timelineController: MockRoomTimelineController(),
-                                     mediaProvider: MockMediaProvider(),
+                                     timelineController: MockTimelineController(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      mediaPlayerProvider: MediaPlayerProviderMock(),
                                      voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                      userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                      appMediator: AppMediatorMock.default,
                                      appSettings: ServiceLocator.shared.settings,
-                                     analyticsService: ServiceLocator.shared.analytics)
+                                     analyticsService: ServiceLocator.shared.analytics,
+                                     emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                     timelineControllerFactory: TimelineControllerFactoryMock(.init()))
         let context = PillContext(timelineContext: mock.context, data: PillTextAttachmentData(type: .user(userID: id), font: .preferredFont(forTextStyle: .body)))
         
         XCTAssertFalse(context.viewState.isOwnMention)
@@ -46,14 +48,16 @@ class PillContextTests: XCTestCase {
         let subject = CurrentValueSubject<[RoomMemberProxyProtocol], Never>([])
         proxyMock.membersPublisher = subject.asCurrentValuePublisher()
         let mock = TimelineViewModel(roomProxy: proxyMock,
-                                     timelineController: MockRoomTimelineController(),
-                                     mediaProvider: MockMediaProvider(),
+                                     timelineController: MockTimelineController(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      mediaPlayerProvider: MediaPlayerProviderMock(),
                                      voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                      userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                      appMediator: AppMediatorMock.default,
                                      appSettings: ServiceLocator.shared.settings,
-                                     analyticsService: ServiceLocator.shared.analytics)
+                                     analyticsService: ServiceLocator.shared.analytics,
+                                     emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                     timelineControllerFactory: TimelineControllerFactoryMock(.init()))
         let context = PillContext(timelineContext: mock.context, data: PillTextAttachmentData(type: .user(userID: id), font: .preferredFont(forTextStyle: .body)))
         
         XCTAssertTrue(context.viewState.isOwnMention)
@@ -64,17 +68,19 @@ class PillContextTests: XCTestCase {
         let id = "test_room"
         let displayName = "Test"
         let proxyMock = JoinedRoomProxyMock(.init(id: id, name: displayName, avatarURL: avatarURL))
-        let mockController = MockRoomTimelineController()
+        let mockController = MockTimelineController()
         mockController.roomProxy = proxyMock
         let mock = TimelineViewModel(roomProxy: proxyMock,
                                      timelineController: mockController,
-                                     mediaProvider: MockMediaProvider(),
+                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                      mediaPlayerProvider: MediaPlayerProviderMock(),
                                      voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                      userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                      appMediator: AppMediatorMock.default,
                                      appSettings: ServiceLocator.shared.settings,
-                                     analyticsService: ServiceLocator.shared.analytics)
+                                     analyticsService: ServiceLocator.shared.analytics,
+                                     emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                     timelineControllerFactory: TimelineControllerFactoryMock(.init()))
         let context = PillContext(timelineContext: mock.context, data: PillTextAttachmentData(type: .allUsers, font: .preferredFont(forTextStyle: .body)))
         
         XCTAssertTrue(context.viewState.isOwnMention)

@@ -1,10 +1,11 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
+import Compound
 import SwiftUI
 
 struct ServerConfirmationScreen: View {
@@ -18,6 +19,7 @@ struct ServerConfirmationScreen: View {
         }
         .background()
         .backgroundStyle(.compound.bgCanvasDefault)
+        .alert(item: $context.alertInfo)
         .introspect(.window, on: .supportedVersions) { window in
             context.send(viewAction: .updateWindow(window))
         }
@@ -27,7 +29,7 @@ struct ServerConfirmationScreen: View {
     var header: some View {
         VStack(spacing: 8) {
             Image(systemSymbol: .personCropCircleFill)
-                .heroImage()
+                .bigIcon()
                 .padding(.bottom, 8)
             
             Text(context.viewState.title)
@@ -66,10 +68,8 @@ struct ServerConfirmationScreen: View {
 // MARK: - Previews
 
 struct ServerConfirmationScreen_Previews: PreviewProvider, TestablePreview {
-    static let loginViewModel = ServerConfirmationScreenViewModel(authenticationService: MockAuthenticationServiceProxy(),
-                                                                  authenticationFlow: .login)
-    static let registerViewModel = ServerConfirmationScreenViewModel(authenticationService: MockAuthenticationServiceProxy(),
-                                                                     authenticationFlow: .register)
+    static let loginViewModel = makeViewModel(flow: .login)
+    static let registerViewModel = makeViewModel(flow: .register)
     
     static var previews: some View {
         NavigationStack {
@@ -83,5 +83,12 @@ struct ServerConfirmationScreen_Previews: PreviewProvider, TestablePreview {
                 .toolbar(.visible, for: .navigationBar)
         }
         .previewDisplayName("Register")
+    }
+    
+    static func makeViewModel(flow: AuthenticationFlow) -> ServerConfirmationScreenViewModel {
+        ServerConfirmationScreenViewModel(authenticationService: AuthenticationService.mock,
+                                          authenticationFlow: flow,
+                                          slidingSyncLearnMoreURL: ServiceLocator.shared.settings.slidingSyncLearnMoreURL,
+                                          userIndicatorController: UserIndicatorControllerMock())
     }
 }

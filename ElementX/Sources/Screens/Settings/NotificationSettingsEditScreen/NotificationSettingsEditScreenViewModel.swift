@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -123,7 +123,7 @@ class NotificationSettingsEditScreenViewModel: NotificationSettingsEditScreenVie
             guard !Task.isCancelled else { return }
             
             let filteredRoomsSummary = roomSummaryProvider.roomListPublisher.value.filter { summary in
-                roomsWithUserDefinedRules.contains(where: { summary.id == $0 })
+                roomsWithUserDefinedRules.contains { summary.id == $0 }
             }
             
             var roomsWithUserDefinedMode: [NotificationSettingsEditScreenRoom] = []
@@ -131,7 +131,7 @@ class NotificationSettingsEditScreenViewModel: NotificationSettingsEditScreenVie
             for roomSummary in filteredRoomsSummary {
                 guard case let .joined(roomProxy) = await userSession.clientProxy.roomForIdentifier(roomSummary.id) else { continue }
                 // `isOneToOneRoom` here is not the same as `isDirect` on the room. From the point of view of the push rule, a one-to-one room is a room with exactly two active members.
-                let isOneToOneRoom = roomProxy.activeMembersCount == 2
+                let isOneToOneRoom = roomProxy.infoPublisher.value.activeMembersCount == 2
                 // display only the rooms we're interested in
                 switch chatType {
                 case .oneToOneChat where isOneToOneRoom, .groupChat where !isOneToOneRoom:
@@ -142,7 +142,7 @@ class NotificationSettingsEditScreenViewModel: NotificationSettingsEditScreenVie
             }
             
             // Sort the room list
-            roomsWithUserDefinedMode.sort(by: { $0.name.localizedCompare($1.name) == .orderedAscending })
+            roomsWithUserDefinedMode.sort { $0.name.localizedCompare($1.name) == .orderedAscending }
             
             state.roomsWithUserDefinedMode = roomsWithUserDefinedMode
         }

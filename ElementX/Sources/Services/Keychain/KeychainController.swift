@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -110,10 +110,10 @@ class KeychainController: KeychainControllerProtocol {
             fatalError("Something has gone mega wrong, all bets are off.")
         }
         let restorationToken = RestorationToken(session: session,
-                                                sessionDirectory: oldToken.sessionDirectory,
-                                                cacheDirectory: oldToken.cacheDirectory,
+                                                sessionDirectories: oldToken.sessionDirectories,
                                                 passphrase: oldToken.passphrase,
-                                                pusherNotificationClientIdentifier: oldToken.pusherNotificationClientIdentifier)
+                                                pusherNotificationClientIdentifier: oldToken.pusherNotificationClientIdentifier,
+                                                slidingSyncProxyURLString: oldToken.slidingSyncProxyURLString)
         setRestorationToken(restorationToken, forUsername: session.userId)
     }
     

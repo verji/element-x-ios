@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -29,7 +29,7 @@ struct AppLockScreen: View {
                 pinInputField
                     .padding(.bottom, 16)
                     .offset(x: pinInputFieldOffset)
-                    .onChange(of: context.viewState.numberOfPINAttempts) { newValue in
+                    .onChange(of: context.viewState.numberOfPINAttempts) { _, newValue in
                         guard newValue > 0 else { return } // Reset without animation in Previews.
                         accessibilitySubtitleFocus = true
                         Task { await animatePINFailure() }

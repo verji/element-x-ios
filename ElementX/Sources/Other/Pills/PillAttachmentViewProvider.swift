@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -46,7 +46,7 @@ final class PillAttachmentViewProvider: NSTextAttachmentViewProvider, NSSecureCo
         if ProcessInfo.isXcodePreview || ProcessInfo.isRunningTests {
             // The mock viewModel simulates the loading logic for testing purposes
             context = PillContext.mock(type: .loadUser(isOwn: false))
-            mediaProvider = MockMediaProvider()
+            mediaProvider = MediaProviderMock(configuration: .init())
         } else if let timelineContext = delegate?.timelineContext {
             context = PillContext(timelineContext: timelineContext, data: pillData)
             mediaProvider = timelineContext.mediaProvider

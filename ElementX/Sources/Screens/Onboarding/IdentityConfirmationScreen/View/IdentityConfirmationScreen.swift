@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -37,7 +37,7 @@ struct IdentityConfirmationScreen: View {
     @ViewBuilder
     private var screenHeader: some View {
         VStack(spacing: 0) {
-            HeroImage(icon: \.lockSolid)
+            BigIcon(icon: \.lockSolid)
                 .padding(.bottom, 16)
             
             Text(L10n.screenIdentityConfirmationTitle)
@@ -67,32 +67,27 @@ struct IdentityConfirmationScreen: View {
                     context.send(viewAction: .otherDevice)
                 }
                 .buttonStyle(.compound(.primary))
-                
-                if context.viewState.availableActions.contains(.recovery) {
-                    Button(L10n.screenIdentityConfirmationUseRecoveryKey) {
-                        context.send(viewAction: .recoveryKey)
-                    }
-                    .buttonStyle(.compound(.secondary))
-                }
-            } else if context.viewState.availableActions.contains(.recovery) {
+            }
+            
+            if context.viewState.availableActions.contains(.recovery) {
                 Button(L10n.screenIdentityConfirmationUseRecoveryKey) {
                     context.send(viewAction: .recoveryKey)
                 }
                 .buttonStyle(.compound(.primary))
             }
             
-            if shouldShowSkipButton {
-                Button(L10n.actionSkip) {
-                    context.send(viewAction: .skip)
-                }
-                .buttonStyle(.compound(.plain))
-            }
-            
             Button(L10n.screenIdentityConfirmationCannotConfirm) {
                 context.send(viewAction: .reset)
             }
-            .buttonStyle(.compound(.plain))
-            .padding(.vertical, 14)
+            .buttonStyle(.compound(.secondary))
+            
+            if shouldShowSkipButton {
+                Button("\(L10n.actionSkip) 🙉") {
+                    context.send(viewAction: .skip)
+                }
+                .buttonStyle(.compound(.plain))
+                .padding(.vertical, 14)
+            }
         }
     }
     
@@ -109,14 +104,18 @@ struct IdentityConfirmationScreen: View {
 // MARK: - Previews
 
 struct IdentityConfirmationScreen_Previews: PreviewProvider, TestablePreview {
+    static var viewModel = makeViewModel()
+    
     static var previews: some View {
         NavigationStack {
             IdentityConfirmationScreen(context: viewModel.context)
         }
-        .snapshot(delay: 0.25)
+        .snapshotPreferences(expect: viewModel.context.$viewState.map { state in
+            state.availableActions.contains([.interactiveVerification, .recovery])
+        })
     }
     
-    private static var viewModel: IdentityConfirmationScreenViewModel {
+    static func makeViewModel() -> IdentityConfirmationScreenViewModel {
         let clientProxy = ClientProxyMock(.init())
         let userSession = UserSessionMock(.init(clientProxy: clientProxy))
         userSession.sessionSecurityStatePublisher = CurrentValuePublisher<SessionSecurityState, Never>(.init(verificationState: .unverified, recoveryState: .enabled))

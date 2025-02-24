@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import MatrixRustSDK
@@ -29,7 +29,7 @@ struct MatrixUserShareLink<Label: View>: View {
 struct MatrixUserPermalink_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         MatrixUserShareLink(userID: "@someone:somewhere.org") {
-            Label("Share", systemImage: "square.and.arrow.up")
+            Label("Share", icon: \.shareIos)
         }
     }
 }

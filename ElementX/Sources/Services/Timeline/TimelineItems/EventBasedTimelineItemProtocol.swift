@@ -1,15 +1,15 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
 import UIKit
 
 protocol EventBasedTimelineItemProtocol: RoomTimelineItemProtocol, CustomStringConvertible {
-    var timestamp: String { get }
+    var timestamp: Date { get }
     var isOutgoing: Bool { get }
     var isEditable: Bool { get }
     var canBeRepliedTo: Bool { get }
@@ -84,7 +84,7 @@ extension EventBasedTimelineItemProtocol {
         if properties.isEdited {
             start = "\(L10n.commonEditedSuffix) "
         }
-        return start + timestamp
+        return start + timestamp.formattedTime()
     }
 
     var isCopyable: Bool {
@@ -98,5 +98,15 @@ extension EventBasedTimelineItemProtocol {
         case .text, .emote, .notice:
             return true
         }
+    }
+    
+    var supportsMediaCaption: Bool {
+        guard let messageBasedItem = self as? EventBasedMessageTimelineItemProtocol else { return false }
+        return messageBasedItem.supportsMediaCaption
+    }
+    
+    var hasMediaCaption: Bool {
+        guard let messageBasedItem = self as? EventBasedMessageTimelineItemProtocol else { return false }
+        return messageBasedItem.hasMediaCaption
     }
 }

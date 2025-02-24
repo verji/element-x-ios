@@ -1,82 +1,168 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
-import Foundation
+import Compound
+import SwiftUI
 
 enum SessionVerificationScreenViewModelAction {
     case finished
 }
 
+enum SessionVerificationScreenViewAction {
+    case acceptVerificationRequest
+    case ignoreVerificationRequest
+    case requestVerification
+    case startSasVerification
+    case restart
+    case accept
+    case decline
+    case cancel
+    case done
+}
+
 struct SessionVerificationScreenViewState: BindableState {
-    var verificationState: SessionVerificationScreenStateMachine.State = .initial
+    let flow: SessionVerificationScreenFlow
+    let learnMoreURL: URL
     
-    var title: String? {
+    var verificationState: SessionVerificationScreenStateMachine.State
+    
+    var headerIcon: (keyPath: KeyPath<CompoundIcons, Image>, style: BigIcon.Style) {
         switch verificationState {
         case .initial:
-            return L10n.screenSessionVerificationOpenExistingSessionTitle
+            switch flow {
+            case .deviceInitiator, .deviceResponder:
+                return (\.devices, .defaultSolid)
+            case .userIntiator, .userResponder:
+                return (\.userProfileSolid, .defaultSolid)
+            }
+        case .acceptingVerificationRequest:
+            return (\.devices, .defaultSolid)
         case .requestingVerification:
-            return L10n.screenSessionVerificationWaitingToAcceptTitle
+            return (\.devices, .defaultSolid)
         case .verificationRequestAccepted:
-            return L10n.screenSessionVerificationCompareEmojisTitle
+            return (\.reaction, .defaultSolid)
         case .startingSasVerification:
-            return nil
+            return (\.devices, .defaultSolid)
         case .sasVerificationStarted:
-            return nil
-        case .showingChallenge:
-            return L10n.screenSessionVerificationCompareEmojisTitle
-        case .acceptingChallenge:
-            return L10n.screenSessionVerificationCompareEmojisTitle
-        case .decliningChallenge:
-            return nil
-        case .verified:
-            return L10n.commonVerificationComplete
+            return (\.devices, .defaultSolid)
         case .cancelling:
-            return nil
+            return (\.lockSolid, .defaultSolid)
+        case .showingChallenge:
+            return (\.reaction, .defaultSolid)
+        case .acceptingChallenge:
+            return (\.reaction, .defaultSolid)
+        case .decliningChallenge:
+            return (\.reaction, .defaultSolid)
+        case .verified:
+            return (\.checkCircleSolid, .successSolid)
         case .cancelled:
-            return L10n.commonVerificationCancelled
+            return (\.infoSolid, .alertSolid)
         }
     }
     
     var titleAccessibilityIdentifier: String {
         verificationState == .verified ? A11yIdentifiers.sessionVerificationScreen.verificationComplete : ""
     }
+    
+    var title: String? {
+        switch verificationState {
+        case .initial:
+            switch flow {
+            case .deviceInitiator:
+                return L10n.screenSessionVerificationUseAnotherDeviceTitle
+            case .userIntiator:
+                return L10n.screenSessionVerificationUserInitiatorTitle
+            case .deviceResponder, .userResponder:
+                return L10n.screenSessionVerificationRequestTitle
+            }
+        case .acceptingVerificationRequest:
+            return waitingTitle
+        case .requestingVerification:
+            return waitingTitle
+        case .verificationRequestAccepted:
+            return L10n.screenSessionVerificationCompareEmojisTitle
+        case .startingSasVerification:
+            return waitingTitle
+        case .sasVerificationStarted:
+            return waitingTitle
+        case .showingChallenge:
+            return L10n.screenSessionVerificationCompareEmojisTitle
+        case .acceptingChallenge:
+            return L10n.screenSessionVerificationCompareEmojisTitle
+        case .decliningChallenge:
+            return L10n.screenSessionVerificationCompareEmojisTitle
+        case .verified:
+            return L10n.commonVerificationComplete
+        case .cancelling:
+            return waitingTitle
+        case .cancelled:
+            return L10n.commonVerificationFailed
+        }
+    }
+    
+    private var waitingTitle: String {
+        switch flow {
+        case .deviceInitiator, .deviceResponder:
+            return L10n.screenSessionVerificationWaitingOtherDeviceTitle
+        case .userIntiator, .userResponder:
+            return L10n.screenSessionVerificationWaitingOtherUserTitle
+        }
+    }
         
     var message: String {
         switch verificationState {
         case .initial:
-            return L10n.screenSessionVerificationOpenExistingSessionSubtitle
+            switch flow {
+            case .deviceInitiator:
+                return L10n.screenSessionVerificationUseAnotherDeviceSubtitle
+            case .userIntiator:
+                return L10n.screenSessionVerificationUserInitiatorSubtitle
+            case .deviceResponder:
+                return L10n.screenSessionVerificationRequestSubtitle
+            case .userResponder:
+                return L10n.screenSessionVerificationUserResponderSubtitle
+            }
+        case .acceptingVerificationRequest:
+            return waitingMessage
         case .requestingVerification:
-            return L10n.screenSessionVerificationWaitingToAcceptSubtitle
+            return waitingMessage
         case .verificationRequestAccepted:
             return L10n.screenSessionVerificationRequestAcceptedSubtitle
         case .startingSasVerification:
-            return L10n.commonWaiting
+            return waitingMessage
         case .sasVerificationStarted:
-            return L10n.commonWaiting
+            return waitingMessage
         case .acceptingChallenge:
             return L10n.screenSessionVerificationCompareEmojisSubtitle
         case .decliningChallenge:
-            return L10n.commonWaiting
-        case .cancelling:
-            return L10n.commonWaiting
-        case .showingChallenge:
             return L10n.screenSessionVerificationCompareEmojisSubtitle
+        case .cancelling:
+            return waitingMessage
+        case .showingChallenge:
+            switch flow {
+            case .deviceInitiator, .deviceResponder:
+                return L10n.screenSessionVerificationCompareEmojisSubtitle
+            case .userIntiator, .userResponder:
+                return L10n.screenSessionVerificationCompareEmojisUserSubtitle
+            }
         case .verified:
-            return L10n.screenSessionVerificationCompleteSubtitle
+            switch flow {
+            case .deviceInitiator, .deviceResponder:
+                return L10n.screenSessionVerificationCompleteSubtitle
+            case .userIntiator, .userResponder:
+                return L10n.screenSessionVerificationCompleteUserSubtitle
+            }
+            
         case .cancelled:
-            return L10n.screenSessionVerificationCancelledSubtitle
+            return L10n.screenSessionVerificationFailedSubtitle
         }
     }
-}
-
-enum SessionVerificationScreenViewAction {
-    case requestVerification
-    case startSasVerification
-    case restart
-    case accept
-    case decline
+    
+    private var waitingMessage: String {
+        L10n.screenSessionVerificationWaitingSubtitle
+    }
 }

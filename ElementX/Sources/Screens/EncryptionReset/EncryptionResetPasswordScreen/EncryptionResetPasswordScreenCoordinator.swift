@@ -1,24 +1,19 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
 import SwiftUI
 
-struct EncryptionResetPasswordScreenCoordinatorParameters { }
+struct EncryptionResetPasswordScreenCoordinatorParameters {
+    let passwordPublisher: PassthroughSubject<String, Never>
+}
 
-enum EncryptionResetPasswordScreenCoordinatorAction: CustomStringConvertible {
-    case resetIdentity(String)
-    
-    var description: String {
-        switch self {
-        case .resetIdentity:
-            "resetIdentity"
-        }
-    }
+enum EncryptionResetPasswordScreenCoordinatorAction {
+    case passwordEntered
 }
 
 final class EncryptionResetPasswordScreenCoordinator: CoordinatorProtocol {
@@ -35,7 +30,7 @@ final class EncryptionResetPasswordScreenCoordinator: CoordinatorProtocol {
     init(parameters: EncryptionResetPasswordScreenCoordinatorParameters) {
         self.parameters = parameters
         
-        viewModel = EncryptionResetPasswordScreenViewModel()
+        viewModel = EncryptionResetPasswordScreenViewModel(passwordPublisher: parameters.passwordPublisher)
     }
     
     func start() {
@@ -44,8 +39,8 @@ final class EncryptionResetPasswordScreenCoordinator: CoordinatorProtocol {
             
             guard let self else { return }
             switch action {
-            case .resetIdentity(let password):
-                self.actionsSubject.send(.resetIdentity(password))
+            case .passwordEntered:
+                self.actionsSubject.send(.passwordEntered)
             }
         }
         .store(in: &cancellables)

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -23,8 +23,8 @@ struct MediaSourceProxy: Hashable {
         self.mimeType = mimeType
     }
     
-    init(url: URL, mimeType: String?) {
-        underlyingSource = mediaSourceFromUrl(url: url.absoluteString)
+    init(url: URL, mimeType: String?) throws {
+        underlyingSource = try MediaSource.fromUrl(url: url.absoluteString)
         self.url = URL(string: underlyingSource.url())
         self.mimeType = mimeType
     }

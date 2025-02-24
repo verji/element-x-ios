@@ -1,12 +1,13 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
 @testable import ElementX
+import MatrixRustSDK
 import XCTest
 
 import WysiwygComposer
@@ -23,17 +24,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
         AppSettings.resetAllSettings()
         appSettings = AppSettings()
         ServiceLocator.shared.register(appSettings: appSettings)
-        wysiwygViewModel = WysiwygComposerViewModel()
-        completionSuggestionServiceMock = CompletionSuggestionServiceMock(configuration: .init())
-        draftServiceMock = ComposerDraftServiceMock()
-        viewModel = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
-                                             completionSuggestionService: completionSuggestionServiceMock,
-                                             mediaProvider: MockMediaProvider(),
-                                             mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
-                                             analyticsService: ServiceLocator.shared.analytics,
-                                             composerDraftService: draftServiceMock)
-        
-        viewModel.context.composerFormattingEnabled = true
+        setUpViewModel()
     }
     
     override func tearDown() {
@@ -41,14 +32,14 @@ class ComposerToolbarViewModelTests: XCTestCase {
     }
 
     func testComposerFocus() {
-        viewModel.process(timelineAction: .setMode(mode: .edit(originalItemId: TimelineItemIdentifier(timelineID: "mock"))))
+        viewModel.process(timelineAction: .setMode(mode: .edit(originalEventOrTransactionID: .eventID("mock"), type: .default)))
         XCTAssertTrue(viewModel.state.bindings.composerFocused)
         viewModel.process(timelineAction: .removeFocus)
         XCTAssertFalse(viewModel.state.bindings.composerFocused)
     }
 
     func testComposerMode() {
-        let mode: ComposerMode = .edit(originalItemId: TimelineItemIdentifier(timelineID: "mock"))
+        let mode: ComposerMode = .edit(originalEventOrTransactionID: .eventID("mock"), type: .default)
         viewModel.process(timelineAction: .setMode(mode: mode))
         XCTAssertEqual(viewModel.state.composerMode, mode)
         viewModel.process(timelineAction: .clear)
@@ -56,7 +47,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
     }
 
     func testComposerModeIsPublished() {
-        let mode: ComposerMode = .edit(originalItemId: TimelineItemIdentifier(timelineID: "mock"))
+        let mode: ComposerMode = .edit(originalEventOrTransactionID: .eventID("mock"), type: .default)
         let expectation = expectation(description: "Composer mode is published")
         let cancellable = viewModel
             .context
@@ -64,10 +55,10 @@ class ComposerToolbarViewModelTests: XCTestCase {
             .map(\.composerMode)
             .removeDuplicates()
             .dropFirst()
-            .sink(receiveValue: { composerMode in
+            .sink { composerMode in
                 XCTAssertEqual(composerMode, mode)
                 expectation.fulfill()
-            })
+            }
 
         viewModel.process(timelineAction: .setMode(mode: mode))
 
@@ -100,12 +91,14 @@ class ComposerToolbarViewModelTests: XCTestCase {
     }
     
     func testSuggestions() {
-        let suggestions: [SuggestionItem] = [.user(item: MentionSuggestionItem(id: "@user_mention_1:matrix.org", displayName: "User 1", avatarURL: nil, range: .init())),
-                                             .user(item: MentionSuggestionItem(id: "@user_mention_2:matrix.org", displayName: "User 2", avatarURL: URL.documentsDirectory, range: .init()))]
+        let suggestions: [SuggestionItem] = [.user(item: MentionSuggestionItem(id: "@user_mention_1:matrix.org", displayName: "User 1", avatarURL: nil, range: .init(), rawSuggestionText: "")),
+                                             .user(item: MentionSuggestionItem(id: "@user_mention_2:matrix.org", displayName: "User 2", avatarURL: .mockMXCAvatar, range: .init(), rawSuggestionText: ""))]
         let mockCompletionSuggestionService = CompletionSuggestionServiceMock(configuration: .init(suggestions: suggestions))
-        viewModel = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+        
+        viewModel = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                             wysiwygViewModel: wysiwygViewModel,
                                              completionSuggestionService: mockCompletionSuggestionService,
-                                             mediaProvider: MockMediaProvider(),
+                                             mediaProvider: MediaProviderMock(configuration: .init()),
                                              mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                              analyticsService: ServiceLocator.shared.analytics,
                                              composerDraftService: draftServiceMock)
@@ -113,18 +106,18 @@ class ComposerToolbarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.state.suggestions, suggestions)
     }
     
-    func testSuggestionTrigger() async {
+    func testSuggestionTrigger() async throws {
+        let deferred = deferFulfillment(wysiwygViewModel.$attributedContent) { $0.plainText == "#not_implemented_yay" }
         wysiwygViewModel.setMarkdownContent("@test")
         wysiwygViewModel.setMarkdownContent("#not_implemented_yay")
-        
-        await Task.yield()
+        try await deferred.fulfill()
         
         // The first one is nil because when initialised the view model is empty
         XCTAssertEqual(completionSuggestionServiceMock.setSuggestionTriggerReceivedInvocations, [nil, .init(type: .user, text: "test", range: .init(location: 0, length: 5)), nil])
     }
     
     func testSelectedUserSuggestion() {
-        let suggestion = SuggestionItem.user(item: .init(id: "@test:matrix.org", displayName: "Test", avatarURL: nil, range: .init()))
+        let suggestion = SuggestionItem.user(item: .init(id: "@test:matrix.org", displayName: "Test", avatarURL: nil, range: .init(), rawSuggestionText: ""))
         viewModel.context.send(viewAction: .selectedSuggestion(suggestion))
         
         // The display name can be used for HTML injection in the rich text editor and it's useless anyway as the clients don't use it when resolving display names
@@ -145,7 +138,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
         viewModel.context.send(viewAction: .composerAppeared)
         await Task.yield()
         let userID = "@test:matrix.org"
-        let suggestion = SuggestionItem.user(item: .init(id: userID, displayName: "Test", avatarURL: nil, range: .init()))
+        let suggestion = SuggestionItem.user(item: .init(id: userID, displayName: "Test", avatarURL: nil, range: .init(), rawSuggestionText: ""))
         viewModel.context.send(viewAction: .selectedSuggestion(suggestion))
         
         let attachment = wysiwygViewModel.textView.attributedText.attribute(.attachment, at: 0, effectiveRange: nil) as? PillTextAttachment
@@ -236,7 +229,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
         }
         
         viewModel.context.composerFormattingEnabled = false
-        viewModel.process(timelineAction: .setMode(mode: .edit(originalItemId: .init(timelineID: "", eventID: "testID"))))
+        viewModel.process(timelineAction: .setMode(mode: .edit(originalEventOrTransactionID: .eventID("testID"), type: .default)))
         viewModel.context.plainComposerText = .init(string: "Hello world!")
         viewModel.saveDraft()
         
@@ -257,12 +250,11 @@ class ComposerToolbarViewModelTests: XCTestCase {
         }
         
         viewModel.context.composerFormattingEnabled = false
-        viewModel.process(timelineAction: .setMode(mode: .reply(itemID: .init(timelineID: "",
-                                                                              eventID: "testID"),
-            replyDetails: .loaded(sender: .init(id: ""),
-                                  eventID: "testID",
-                                  eventContent: .message(.text(.init(body: "reply text")))),
-            isThread: false)))
+        viewModel.process(timelineAction: .setMode(mode: .reply(eventID: "testID",
+                                                                replyDetails: .loaded(sender: .init(id: ""),
+                                                                                      eventID: "testID",
+                                                                                      eventContent: .message(.text(.init(body: "reply text")))),
+                                                                isThread: false)))
         viewModel.context.plainComposerText = .init(string: "Hello world!")
         viewModel.saveDraft()
         
@@ -283,12 +275,11 @@ class ComposerToolbarViewModelTests: XCTestCase {
         }
         
         viewModel.context.composerFormattingEnabled = false
-        viewModel.process(timelineAction: .setMode(mode: .reply(itemID: .init(timelineID: "",
-                                                                              eventID: "testID"),
-            replyDetails: .loaded(sender: .init(id: ""),
-                                  eventID: "testID",
-                                  eventContent: .message(.text(.init(body: "reply text")))),
-            isThread: false)))
+        viewModel.process(timelineAction: .setMode(mode: .reply(eventID: "testID",
+                                                                replyDetails: .loaded(sender: .init(id: ""),
+                                                                                      eventID: "testID",
+                                                                                      eventContent: .message(.text(.init(body: "reply text")))),
+                                                                isThread: false)))
         viewModel.saveDraft()
         
         await fulfillment(of: [expectation], timeout: 10)
@@ -323,7 +314,9 @@ class ComposerToolbarViewModelTests: XCTestCase {
         viewModel.context.composerFormattingEnabled = false
         let waveformData: [Float] = Array(repeating: 1.0, count: 1000)
         viewModel.context.plainComposerText = .init(string: "Hello world!")
-        viewModel.process(timelineAction: .setMode(mode: .previewVoiceMessage(state: AudioPlayerState(id: .recorderPreview, duration: 10.0), waveform: .data(waveformData), isUploading: false)))
+        viewModel.process(timelineAction: .setMode(mode: .previewVoiceMessage(state: AudioPlayerState(id: .recorderPreview, title: "", duration: 10.0),
+                                                                              waveform: .data(waveformData),
+                                                                              isUploading: false)))
         viewModel.saveDraft()
 
         await fulfillment(of: [expectation], timeout: 10)
@@ -340,7 +333,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
             return .success(nil)
         }
         
-        viewModel.loadDraft()
+        await viewModel.loadDraft()
         await fulfillment(of: [expectation], timeout: 10)
         XCTAssertFalse(viewModel.context.composerFormattingEnabled)
         XCTAssertTrue(viewModel.state.composerEmpty)
@@ -356,7 +349,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
                                   htmlText: nil,
                                   draftType: .newMessage))
         }
-        viewModel.loadDraft()
+        await viewModel.loadDraft()
         
         await fulfillment(of: [expectation], timeout: 10)
         XCTAssertFalse(viewModel.context.composerFormattingEnabled)
@@ -373,7 +366,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
                                   htmlText: "<strong>Hello</strong> world!",
                                   draftType: .newMessage))
         }
-        viewModel.loadDraft()
+        await viewModel.loadDraft()
         
         await fulfillment(of: [expectation], timeout: 10)
         XCTAssertTrue(viewModel.context.composerFormattingEnabled)
@@ -391,11 +384,11 @@ class ComposerToolbarViewModelTests: XCTestCase {
                                   htmlText: nil,
                                   draftType: .edit(eventID: "testID")))
         }
-        viewModel.loadDraft()
+        await viewModel.loadDraft()
         
         await fulfillment(of: [expectation], timeout: 10)
         XCTAssertFalse(viewModel.context.composerFormattingEnabled)
-        XCTAssertEqual(viewModel.state.composerMode, .edit(originalItemId: .init(timelineID: "", eventID: "testID")))
+        XCTAssertEqual(viewModel.state.composerMode, .edit(originalEventOrTransactionID: .eventID("testID"), type: .default))
         XCTAssertEqual(viewModel.context.plainComposerText, NSAttributedString(string: "Hello world!"))
     }
     
@@ -424,18 +417,18 @@ class ComposerToolbarViewModelTests: XCTestCase {
             return .success(.init(details: loadedReply,
                                   isThreaded: true))
         }
-        viewModel.loadDraft()
+        await viewModel.loadDraft()
         
         await fulfillment(of: [draftExpectation], timeout: 10)
         XCTAssertFalse(viewModel.context.composerFormattingEnabled)
         // Testing the loading state first
-        XCTAssertEqual(viewModel.state.composerMode, .reply(itemID: .init(timelineID: "", eventID: testEventID),
+        XCTAssertEqual(viewModel.state.composerMode, .reply(eventID: testEventID,
                                                             replyDetails: .loading(eventID: testEventID),
                                                             isThread: false))
         XCTAssertEqual(viewModel.context.plainComposerText, NSAttributedString(string: text))
         
         await fulfillment(of: [loadReplyExpectation], timeout: 10)
-        XCTAssertEqual(viewModel.state.composerMode, .reply(itemID: .init(timelineID: "", eventID: testEventID),
+        XCTAssertEqual(viewModel.state.composerMode, .reply(eventID: testEventID,
                                                             replyDetails: loadedReply,
                                                             isThread: true))
     }
@@ -443,8 +436,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
     func testRestoreReplyAndCancelReplyMode() async {
         let testEventID = "testID"
         let text = "Hello world!"
-        let loadedReply = TimelineItemReplyDetails.loaded(sender: .init(id: "userID",
-                                                                        displayName: "Username"),
+        let loadedReply = TimelineItemReplyDetails.loaded(sender: .init(id: "userID", displayName: "Username"),
                                                           eventID: testEventID,
                                                           eventContent: .message(.text(.init(body: "Reply text"))))
         
@@ -465,12 +457,12 @@ class ComposerToolbarViewModelTests: XCTestCase {
             return .success(.init(details: loadedReply,
                                   isThreaded: true))
         }
-        viewModel.loadDraft()
+        await viewModel.loadDraft()
         
         await fulfillment(of: [draftExpectation], timeout: 10)
         XCTAssertFalse(viewModel.context.composerFormattingEnabled)
         // Testing the loading state first
-        XCTAssertEqual(viewModel.state.composerMode, .reply(itemID: .init(timelineID: "", eventID: testEventID),
+        XCTAssertEqual(viewModel.state.composerMode, .reply(eventID: testEventID,
                                                             replyDetails: .loading(eventID: testEventID),
                                                             isThread: false))
         XCTAssertEqual(viewModel.context.plainComposerText, NSAttributedString(string: text))
@@ -484,7 +476,7 @@ class ComposerToolbarViewModelTests: XCTestCase {
     func testSaveVolatileDraftWhenEditing() {
         viewModel.context.composerFormattingEnabled = false
         viewModel.context.plainComposerText = .init(string: "Hello world!")
-        viewModel.process(timelineAction: .setMode(mode: .edit(originalItemId: .random)))
+        viewModel.process(timelineAction: .setMode(mode: .edit(originalEventOrTransactionID: .eventID(UUID().uuidString), type: .default)))
         
         let draft = draftServiceMock.saveVolatileDraftReceivedDraft
         XCTAssertNotNil(draft)
@@ -623,10 +615,164 @@ class ComposerToolbarViewModelTests: XCTestCase {
         viewModel.process(viewAction: .sendMessage)
         try await deferred.fulfill()
     }
+    
+    func testRestoreDoesntOverwriteInitialText() async {
+        let sharedText = "Some shared text"
+        let expectation = expectation(description: "Wait for draft to be restored")
+        expectation.isInverted = true
+        setUpViewModel(initialText: sharedText) {
+            defer { expectation.fulfill() }
+            return .success(.init(plainText: "Hello world!",
+                                  htmlText: nil,
+                                  draftType: .newMessage))
+        }
+        viewModel.context.composerFormattingEnabled = false
+        await viewModel.loadDraft()
+        
+        await fulfillment(of: [expectation], timeout: 1)
+        XCTAssertFalse(viewModel.context.composerFormattingEnabled)
+        XCTAssertEqual(viewModel.state.composerMode, .default)
+        XCTAssertEqual(viewModel.context.plainComposerText, NSAttributedString(string: sharedText))
+    }
+    
+    // MARK: - Identity Violation
+    
+    func testVerificationViolationDisablesComposer() async throws {
+        let mockCompletionSuggestionService = CompletionSuggestionServiceMock(configuration: .init())
+        
+        let roomProxyMock = JoinedRoomProxyMock(.init(name: "Test"))
+        
+        let roomMemberProxyMock = RoomMemberProxyMock(with: .init(userID: "@alice:localhost", membership: .join))
+        roomProxyMock.getMemberUserIDClosure = { _ in
+            .success(roomMemberProxyMock)
+        }
+    
+        let mockSubject = CurrentValueSubject<[IdentityStatusChange], Never>([])
+        roomProxyMock.underlyingIdentityStatusChangesPublisher = mockSubject.asCurrentValuePublisher()
+        
+        viewModel = ComposerToolbarViewModel(roomProxy: roomProxyMock,
+                                             wysiwygViewModel: wysiwygViewModel,
+                                             completionSuggestionService: mockCompletionSuggestionService,
+                                             mediaProvider: MediaProviderMock(configuration: .init()),
+                                             mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
+                                             analyticsService: ServiceLocator.shared.analytics,
+                                             composerDraftService: draftServiceMock)
+        
+        var fulfillment = deferFulfillment(viewModel.context.$viewState, message: "Composer is disabled") { $0.canSend == false }
+        mockSubject.send([IdentityStatusChange(userId: "@alice:localhost", changedTo: .verificationViolation)])
+        try await fulfillment.fulfill()
+        
+        fulfillment = deferFulfillment(viewModel.context.$viewState, message: "Composer is enabled") { $0.canSend == true }
+        mockSubject.send([IdentityStatusChange(userId: "@alice:localhost", changedTo: .pinned)])
+        try await fulfillment.fulfill()
+    }
+    
+    func testMultipleViolation() async throws {
+        let mockCompletionSuggestionService = CompletionSuggestionServiceMock(configuration: .init())
+        
+        let roomProxyMock = JoinedRoomProxyMock(.init(name: "Test"))
+        
+        let aliceRoomMemberProxyMock = RoomMemberProxyMock(with: .init(userID: "@alice:localhost", membership: .join))
+        let bobRoomMemberProxyMock = RoomMemberProxyMock(with: .init(userID: "@bob:localhost", membership: .join))
+        
+        roomProxyMock.getMemberUserIDClosure = { userId in
+            if userId == "@alice:localhost" {
+                return .success(aliceRoomMemberProxyMock)
+            } else if userId == "@bob:localhost" {
+                return .success(bobRoomMemberProxyMock)
+            } else {
+                return .failure(.sdkError(ClientProxyMockError.generic))
+            }
+        }
+    
+        // There are 2 violations, ensure that resolving the first one is not enough
+        let mockSubject = CurrentValueSubject<[IdentityStatusChange], Never>([
+            IdentityStatusChange(userId: "@alice:localhost", changedTo: .verificationViolation),
+            IdentityStatusChange(userId: "@bob:localhost", changedTo: .verificationViolation)
+        ])
+        
+        roomProxyMock.underlyingIdentityStatusChangesPublisher = mockSubject.asCurrentValuePublisher()
+        
+        viewModel = ComposerToolbarViewModel(roomProxy: roomProxyMock,
+                                             wysiwygViewModel: wysiwygViewModel,
+                                             completionSuggestionService: mockCompletionSuggestionService,
+                                             mediaProvider: MediaProviderMock(configuration: .init()),
+                                             mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
+                                             analyticsService: ServiceLocator.shared.analytics,
+                                             composerDraftService: draftServiceMock)
+        
+        var fulfillment = deferFulfillment(viewModel.context.$viewState, message: "Composer is disabled") { $0.canSend == false }
+        mockSubject.send([IdentityStatusChange(userId: "@alice:localhost", changedTo: .verificationViolation)])
+        try await fulfillment.fulfill()
+        
+        fulfillment = deferFulfillment(viewModel.context.$viewState, message: "Composer is still disabled") { $0.canSend == false }
+        mockSubject.send([IdentityStatusChange(userId: "@alice:localhost", changedTo: .pinned)])
+        try await fulfillment.fulfill()
+        
+        fulfillment = deferFulfillment(viewModel.context.$viewState, message: "Composer is now enabled") { $0.canSend == true }
+        mockSubject.send([IdentityStatusChange(userId: "@bob:localhost", changedTo: .pinned)])
+        try await fulfillment.fulfill()
+    }
+    
+    func testPinViolationDoesNotDisableComposer() {
+        let mockCompletionSuggestionService = CompletionSuggestionServiceMock(configuration: .init())
+        
+        let roomProxyMock = JoinedRoomProxyMock(.init(name: "Test"))
+        let roomMemberProxyMock = RoomMemberProxyMock(with: .init(userID: "@alice:localhost", membership: .join))
+        
+        roomProxyMock.getMemberUserIDClosure = { _ in
+            .success(roomMemberProxyMock)
+        }
+        
+        roomProxyMock.underlyingIdentityStatusChangesPublisher = CurrentValueSubject([IdentityStatusChange(userId: "@alice:localhost", changedTo: .pinViolation)]).asCurrentValuePublisher()
+        
+        viewModel = ComposerToolbarViewModel(roomProxy: roomProxyMock,
+                                             wysiwygViewModel: wysiwygViewModel,
+                                             completionSuggestionService: mockCompletionSuggestionService,
+                                             mediaProvider: MediaProviderMock(configuration: .init()),
+                                             mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
+                                             analyticsService: ServiceLocator.shared.analytics,
+                                             composerDraftService: draftServiceMock)
+        
+        let expectation = expectation(description: "Composer should be enabled")
+        let cancellable = viewModel
+            .context
+            .$viewState
+            .map(\.canSend)
+            .sink { canSend in
+                if canSend {
+                    expectation.fulfill()
+                }
+            }
+        
+        wait(for: [expectation], timeout: 2.0)
+        cancellable.cancel()
+    }
+    
+    // MARK: - Helpers
+    
+    private func setUpViewModel(initialText: String? = nil, loadDraftClosure: (() async -> Result<ComposerDraftProxy?, ComposerDraftServiceError>)? = nil) {
+        wysiwygViewModel = WysiwygComposerViewModel()
+        completionSuggestionServiceMock = CompletionSuggestionServiceMock(configuration: .init())
+        draftServiceMock = ComposerDraftServiceMock()
+        if let loadDraftClosure {
+            draftServiceMock.loadDraftClosure = loadDraftClosure
+        }
+        
+        viewModel = ComposerToolbarViewModel(initialText: initialText,
+                                             roomProxy: JoinedRoomProxyMock(.init()),
+                                             wysiwygViewModel: wysiwygViewModel,
+                                             completionSuggestionService: completionSuggestionServiceMock,
+                                             mediaProvider: MediaProviderMock(configuration: .init()),
+                                             mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
+                                             analyticsService: ServiceLocator.shared.analytics,
+                                             composerDraftService: draftServiceMock)
+        viewModel.context.composerFormattingEnabled = true
+    }
 }
 
 private extension MentionSuggestionItem {
     static func allUsersMention(roomAvatar: URL?) -> Self {
-        MentionSuggestionItem(id: PillConstants.atRoom, displayName: PillConstants.everyone, avatarURL: roomAvatar, range: .init())
+        MentionSuggestionItem(id: PillConstants.atRoom, displayName: PillConstants.everyone, avatarURL: roomAvatar, range: .init(), rawSuggestionText: "")
     }
 }

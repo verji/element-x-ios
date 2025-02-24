@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -69,10 +69,11 @@ struct HomeScreenInviteCell: View {
 
     @ViewBuilder
     private var inviterView: some View {
-        if let inviter = room.inviter, !room.isDirect {
+        if let inviter = room.inviter,
+           !room.isDirect {
             RoomInviterLabel(inviter: inviter, mediaProvider: context.mediaProvider)
                 .font(.compound.bodyMD)
-                .foregroundStyle(.compound.textPlaceholder)
+                .foregroundStyle(.compound.textSecondary)
         }
     }
     
@@ -87,7 +88,7 @@ struct HomeScreenInviteCell: View {
             if let subtitle {
                 Text(subtitle)
                     .font(.compound.bodyMD)
-                    .foregroundColor(.compound.textPlaceholder)
+                    .foregroundColor(.compound.textSecondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -121,10 +122,13 @@ struct HomeScreenInviteCell: View {
         room.isDirect ? room.inviter?.id : room.canonicalAlias
     }
     
+    @ViewBuilder
     private var badge: some View {
-        Circle()
-            .scaledFrame(size: 12)
-            .foregroundColor(.compound.iconAccentTertiary)
+        if room.badges.isDotShown {
+            Circle()
+                .scaledFrame(size: 12)
+                .foregroundColor(.compound.iconAccentTertiary) // The badge is always green, no need to check isHighlighted here.
+        }
     }
 }
 
@@ -144,7 +148,7 @@ struct HomeScreenInviteCell_Previews: PreviewProvider, TestablePreview {
                 HomeScreenInviteCell(room: .roomInvite(),
                                      context: viewModel().context)
                 
-                HomeScreenInviteCell(room: .roomInvite(alias: "#footest:somewhere.org", avatarURL: .picturesDirectory),
+                HomeScreenInviteCell(room: .roomInvite(alias: "#footest:somewhere.org", avatarURL: .mockMXCAvatar),
                                      context: viewModel().context)
                 
                 HomeScreenInviteCell(room: .roomInvite(alias: "#footest:somewhere.org"),
@@ -177,8 +181,7 @@ private extension HomeScreenRoom {
         
         let summary = RoomSummary(roomListItem: RoomListItemSDKMock(),
                                   id: "@someone:somewhere.com",
-                                  isInvite: false,
-                                  inviter: inviter,
+                                  joinRequestType: .invite(inviter: inviter),
                                   name: "Some Guy",
                                   isDirect: true,
                                   avatarURL: nil,
@@ -201,12 +204,11 @@ private extension HomeScreenRoom {
         let inviter = RoomMemberProxyMock()
         inviter.displayName = "Luca"
         inviter.userID = "@jack:somewhi.nl"
-        inviter.avatarURL = avatarURL
+        inviter.avatarURL = avatarURL.map { _ in .mockMXCUserAvatar }
         
         let summary = RoomSummary(roomListItem: RoomListItemSDKMock(),
                                   id: "@someone:somewhere.com",
-                                  isInvite: false,
-                                  inviter: inviter,
+                                  joinRequestType: .invite(inviter: inviter),
                                   name: "Awesome Room",
                                   isDirect: false,
                                   avatarURL: avatarURL,

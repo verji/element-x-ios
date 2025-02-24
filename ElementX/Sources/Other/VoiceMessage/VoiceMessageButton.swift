@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -106,12 +106,12 @@ struct VoiceMessageButton_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                VoiceMessageButton(state: .paused, size: .small, action: { })
-                VoiceMessageButton(state: .paused, size: .medium, action: { })
+                VoiceMessageButton(state: .paused, size: .small) { }
+                VoiceMessageButton(state: .paused, size: .medium) { }
             }
             HStack(spacing: 8) {
-                VoiceMessageButton(state: .playing, size: .small, action: { })
-                VoiceMessageButton(state: .playing, size: .medium, action: { })
+                VoiceMessageButton(state: .playing, size: .small) { }
+                VoiceMessageButton(state: .playing, size: .medium) { }
             }
         }
         .padding()

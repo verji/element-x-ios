@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -12,7 +12,7 @@ struct PollRoomTimelineView: View {
     @EnvironmentObject private var context: TimelineViewModel.Context
     
     private var state: PollViewState {
-        if context.viewState.isPinnedEventsTimeline {
+        if context.viewState.timelineKind == .pinned {
             return .preview
         } else {
             return .full(isEditable: timelineItem.isEditable)
@@ -51,7 +51,7 @@ struct PollRoomTimelineView: View {
 
 struct PollRoomTimelineView_Previews: PreviewProvider, TestablePreview {
     static let viewModel = TimelineViewModel.mock
-    static let pinnedEventsTimelineViewModel = TimelineViewModel.pinnedEventsTimelineMock
+    static let pinnedEventsTimelineViewModel = TimelineViewModel.mock(timelineKind: .pinned)
 
     static var previews: some View {
         PollRoomTimelineView(timelineItem: .mock(poll: .disclosed(), isOutgoing: false))

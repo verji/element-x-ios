@@ -1,11 +1,13 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
+import Combine
 import Compound
+import MatrixRustSDK
 import SwiftUI
 import WysiwygComposer
 
@@ -44,6 +46,7 @@ struct ComposerToolbar: View {
                     .offset(y: -frame.height)
             }
         }
+        .disabled(!context.viewState.canSend)
         .alert(item: $context.alertInfo)
     }
     
@@ -62,7 +65,7 @@ struct ComposerToolbar: View {
             if !context.composerFormattingEnabled {
                 if context.viewState.isUploading {
                     ProgressView()
-                        .scaledFrame(size: 44, relativeTo: .title)
+                        .scaledFrame(size: 44, relativeTo: .compound.headingLG)
                         .padding(.leading, 3)
                 } else if context.viewState.showSendButton {
                     sendButton
@@ -119,35 +122,39 @@ struct ComposerToolbar: View {
             Image(Asset.Images.closeRte.name)
                 .resizable()
                 .scaledToFit()
-                .scaledFrame(size: 30, relativeTo: .title)
-                .scaledPadding(7, relativeTo: .title)
+                .scaledFrame(size: 30, relativeTo: .compound.headingLG)
+                .scaledPadding(7, relativeTo: .compound.headingLG)
         }
         .accessibilityLabel(L10n.actionClose)
         .accessibilityIdentifier(A11yIdentifiers.roomScreen.composerToolbar.closeFormattingOptions)
     }
     
     private var sendButton: some View {
-        Button {
-            sendMessage()
-        } label: {
-            CompoundIcon(context.viewState.composerMode.isEdit ? \.check : \.sendSolid)
-                .scaledPadding(6, relativeTo: .title)
-                .accessibilityLabel(context.viewState.composerMode.isEdit ? L10n.actionConfirm : L10n.actionSend)
-                .foregroundColor(context.viewState.sendButtonDisabled ? .compound.iconDisabled : .white)
-                .background {
-                    Circle()
-                        .foregroundColor(context.viewState.sendButtonDisabled ? .clear : .compound.iconAccentTertiary)
+        Group {
+            if context.viewState.composerMode.isEdit {
+                Button(action: sendMessage) {
+                    CompoundIcon(\.check, size: .medium, relativeTo: .compound.headingLG)
+                        .foregroundColor(.white)
+                        .scaledPadding(6, relativeTo: .compound.headingLG)
+                        .background(.compound.iconAccentTertiary, in: Circle())
+                        .accessibilityLabel(L10n.actionConfirm)
                 }
-                .scaledPadding(4, relativeTo: .title)
+            } else {
+                SendButton(action: sendMessage)
+                    .accessibilityLabel(L10n.actionSend)
+            }
         }
+        .scaledPadding(4, relativeTo: .compound.headingLG)
         .disabled(context.viewState.sendButtonDisabled)
         .animation(.linear(duration: 0.1).disabledDuringTests(), value: context.viewState.sendButtonDisabled)
         .keyboardShortcut(.return, modifiers: [.command])
+        .accessibilityIdentifier(A11yIdentifiers.roomScreen.sendButton)
     }
     
     private var messageComposer: some View {
         MessageComposer(plainComposerText: $context.plainComposerText,
                         presendCallback: $context.presendCallback,
+                        selectedRange: $context.selectedRange,
                         composerView: composerView,
                         mode: context.viewState.composerMode,
                         composerFormattingEnabled: context.composerFormattingEnabled,
@@ -174,23 +181,27 @@ struct ComposerToolbar: View {
         .focused($composerFocused)
         .padding(.leading, context.composerFormattingEnabled ? 7 : 0)
         .padding(.trailing, context.composerFormattingEnabled ? 4 : 0)
+        .accessibilityIdentifier(A11yIdentifiers.roomScreen.messageComposer)
         .onTapGesture {
             guard !composerFocused else { return }
             composerFocused = true
         }
-        .onChange(of: context.composerFocused) { newValue in
+        .onChange(of: context.composerFocused) { _, newValue in
             guard composerFocused != newValue else { return }
             
             composerFocused = newValue
         }
-        .onChange(of: composerFocused) { newValue in
+        .onChange(of: composerFocused) { _, newValue in
             context.composerFocused = newValue
         }
-        .onChange(of: context.plainComposerText) { _ in
+        .onChange(of: context.plainComposerText) {
             context.send(viewAction: .plainComposerTextChanged)
         }
-        .onChange(of: context.composerFormattingEnabled) { _ in
+        .onChange(of: context.composerFormattingEnabled) {
             context.send(viewAction: .didToggleFormattingOptions)
+        }
+        .onChange(of: context.selectedRange) {
+            context.send(viewAction: .selectedTextChanged)
         }
         .onAppear {
             composerFocused = context.composerFocused
@@ -269,8 +280,8 @@ struct ComposerToolbar: View {
         } label: {
             CompoundIcon(\.delete)
                 .scaledToFit()
-                .scaledFrame(size: 30, relativeTo: .title)
-                .scaledPadding(7, relativeTo: .title)
+                .scaledFrame(size: 30, relativeTo: .compound.headingLG)
+                .scaledPadding(7, relativeTo: .compound.headingLG)
         }
         .buttonStyle(.compound(.plain))
         .accessibilityLabel(L10n.a11yDelete)
@@ -289,16 +300,19 @@ struct ComposerToolbar: View {
     }
 }
 
+// MARK: - Previews
+
 struct ComposerToolbar_Previews: PreviewProvider, TestablePreview {
     static let wysiwygViewModel = WysiwygComposerViewModel()
-    static let composerViewModel = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+    static let composerViewModel = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                            wysiwygViewModel: wysiwygViewModel,
                                                             completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init(suggestions: suggestions)),
-                                                            mediaProvider: MockMediaProvider(),
+                                                            mediaProvider: MediaProviderMock(configuration: .init()),
                                                             mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                                             analyticsService: ServiceLocator.shared.analytics,
                                                             composerDraftService: ComposerDraftServiceMock())
-    static let suggestions: [SuggestionItem] = [.user(item: MentionSuggestionItem(id: "@user_mention_1:matrix.org", displayName: "User 1", avatarURL: nil, range: .init())),
-                                                .user(item: MentionSuggestionItem(id: "@user_mention_2:matrix.org", displayName: "User 2", avatarURL: URL.documentsDirectory, range: .init()))]
+    static let suggestions: [SuggestionItem] = [.user(item: MentionSuggestionItem(id: "@user_mention_1:matrix.org", displayName: "User 1", avatarURL: nil, range: .init(), rawSuggestionText: "")),
+                                                .user(item: MentionSuggestionItem(id: "@user_mention_2:matrix.org", displayName: "User 2", avatarURL: .mockMXCUserAvatar, range: .init(), rawSuggestionText: ""))]
     
     static var previews: some View {
         ComposerToolbar.mock(focused: true)
@@ -325,18 +339,22 @@ struct ComposerToolbar_Previews: PreviewProvider, TestablePreview {
             ComposerToolbar.replyLoadingPreviewMock(isLoading: false)
         }
         .previewDisplayName("Reply")
+        
+        VStack(spacing: 8) {
+            ComposerToolbar.disabledPreviewMock()
+        }
+        .previewDisplayName("Disabled")
     }
 }
-
-// MARK: - Mock
 
 extension ComposerToolbar {
     static func mock(focused: Bool = true) -> ComposerToolbar {
         let wysiwygViewModel = WysiwygComposerViewModel()
         var composerViewModel: ComposerToolbarViewModel {
-            let model = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+            let model = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                 wysiwygViewModel: wysiwygViewModel,
                                                  completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init()),
-                                                 mediaProvider: MockMediaProvider(),
+                                                 mediaProvider: MediaProviderMock(configuration: .init()),
                                                  mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                                  analyticsService: ServiceLocator.shared.analytics,
                                                  composerDraftService: ComposerDraftServiceMock())
@@ -351,9 +369,10 @@ extension ComposerToolbar {
     static func textWithVoiceMessage(focused: Bool = true) -> ComposerToolbar {
         let wysiwygViewModel = WysiwygComposerViewModel()
         var composerViewModel: ComposerToolbarViewModel {
-            let model = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+            let model = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                 wysiwygViewModel: wysiwygViewModel,
                                                  completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init()),
-                                                 mediaProvider: MockMediaProvider(),
+                                                 mediaProvider: MediaProviderMock(configuration: .init()),
                                                  mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                                  analyticsService: ServiceLocator.shared.analytics,
                                                  composerDraftService: ComposerDraftServiceMock())
@@ -368,9 +387,10 @@ extension ComposerToolbar {
     static func voiceMessageRecordingMock() -> ComposerToolbar {
         let wysiwygViewModel = WysiwygComposerViewModel()
         var composerViewModel: ComposerToolbarViewModel {
-            let model = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+            let model = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                 wysiwygViewModel: wysiwygViewModel,
                                                  completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init()),
-                                                 mediaProvider: MockMediaProvider(),
+                                                 mediaProvider: MediaProviderMock(configuration: .init()),
                                                  mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                                  analyticsService: ServiceLocator.shared.analytics,
                                                  composerDraftService: ComposerDraftServiceMock())
@@ -386,13 +406,18 @@ extension ComposerToolbar {
         let wysiwygViewModel = WysiwygComposerViewModel()
         let waveformData: [Float] = Array(repeating: 1.0, count: 1000)
         var composerViewModel: ComposerToolbarViewModel {
-            let model = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+            let model = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                 wysiwygViewModel: wysiwygViewModel,
                                                  completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init()),
-                                                 mediaProvider: MockMediaProvider(),
+                                                 mediaProvider: MediaProviderMock(configuration: .init()),
                                                  mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                                  analyticsService: ServiceLocator.shared.analytics,
                                                  composerDraftService: ComposerDraftServiceMock())
-            model.state.composerMode = .previewVoiceMessage(state: AudioPlayerState(id: .recorderPreview, duration: 10.0), waveform: .data(waveformData), isUploading: uploading)
+            model.state.composerMode = .previewVoiceMessage(state: AudioPlayerState(id: .recorderPreview,
+                                                                                    title: L10n.commonVoiceMessage,
+                                                                                    duration: 10.0),
+                                                            waveform: .data(waveformData),
+                                                            isUploading: uploading)
             return model
         }
         return ComposerToolbar(context: composerViewModel.context,
@@ -403,19 +428,38 @@ extension ComposerToolbar {
     static func replyLoadingPreviewMock(isLoading: Bool) -> ComposerToolbar {
         let wysiwygViewModel = WysiwygComposerViewModel()
         var composerViewModel: ComposerToolbarViewModel {
-            let model = ComposerToolbarViewModel(wysiwygViewModel: wysiwygViewModel,
+            let model = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                 wysiwygViewModel: wysiwygViewModel,
                                                  completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init()),
-                                                 mediaProvider: MockMediaProvider(),
+                                                 mediaProvider: MediaProviderMock(configuration: .init()),
                                                  mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                                  analyticsService: ServiceLocator.shared.analytics,
                                                  composerDraftService: ComposerDraftServiceMock())
-            model.state.composerMode = isLoading ? .reply(itemID: .init(timelineID: ""),
+            model.state.composerMode = isLoading ? .reply(eventID: UUID().uuidString,
                                                           replyDetails: .loading(eventID: ""),
                                                           isThread: false) :
-                .reply(itemID: .init(timelineID: ""),
+                .reply(eventID: UUID().uuidString,
                        replyDetails: .loaded(sender: .init(id: "",
                                                            displayName: "Test"),
                                              eventID: "", eventContent: .message(.text(.init(body: "Hello World!")))), isThread: false)
+            return model
+        }
+        return ComposerToolbar(context: composerViewModel.context,
+                               wysiwygViewModel: wysiwygViewModel,
+                               keyCommands: [])
+    }
+    
+    static func disabledPreviewMock() -> ComposerToolbar {
+        let wysiwygViewModel = WysiwygComposerViewModel()
+        var composerViewModel: ComposerToolbarViewModel {
+            let model = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                 wysiwygViewModel: wysiwygViewModel,
+                                                 completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init()),
+                                                 mediaProvider: MediaProviderMock(configuration: .init()),
+                                                 mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
+                                                 analyticsService: ServiceLocator.shared.analytics,
+                                                 composerDraftService: ComposerDraftServiceMock())
+            model.state.canSend = false
             return model
         }
         return ComposerToolbar(context: composerViewModel.context,

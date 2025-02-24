@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -16,16 +16,16 @@ class PollFormScreenUITests: XCTestCase {
 
     func testFilledPoll() async throws {
         let app = Application.launch(.createPoll)
-        let questionTextField = app.textViews[A11yIdentifiers.pollFormScreen.question]
-        questionTextField.forceTap()
+        let questionTextField = app.textFields[A11yIdentifiers.pollFormScreen.question]
+        questionTextField.tapCenter()
         questionTextField.typeText("Do you like polls?")
 
-        let option1TextField = app.textViews[A11yIdentifiers.pollFormScreen.optionID(0)]
-        option1TextField.forceTap()
+        let option1TextField = app.textFields[A11yIdentifiers.pollFormScreen.optionID(0)]
+        option1TextField.tapCenter()
         option1TextField.typeText("Yes")
 
-        let option2TextField = app.textViews[A11yIdentifiers.pollFormScreen.optionID(1)]
-        option2TextField.forceTap()
+        let option2TextField = app.textFields[A11yIdentifiers.pollFormScreen.optionID(1)]
+        option2TextField.tapCenter()
         option2TextField.typeText("No")
         
         // Dismiss the keyboard
@@ -34,7 +34,7 @@ class PollFormScreenUITests: XCTestCase {
         let createButton = app.buttons[A11yIdentifiers.pollFormScreen.submit]
         XCTAssertTrue(createButton.isEnabled)
 
-        try await app.assertScreenshot(.createPoll, step: 1)
+        try await app.assertScreenshot(.createPoll, step: 1, delay: .seconds(0.5))
     }
 
     func testMaxOptions() async throws {
@@ -57,6 +57,6 @@ class PollFormScreenUITests: XCTestCase {
         XCTAssertFalse(addOption.exists)
         XCTAssertFalse(createButton.isEnabled)
 
-        try await app.assertScreenshot(.createPoll, step: 2)
+        try await app.assertScreenshot(.createPoll, step: 2, delay: .seconds(0.5))
     }
 }

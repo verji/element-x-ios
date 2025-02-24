@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import XCTest
@@ -13,7 +13,7 @@ import Combine
 @MainActor
 class RoomFlowCoordinatorTests: XCTestCase {
     var clientProxy: ClientProxyMock!
-    var timelineControllerFactory: RoomTimelineControllerFactoryMock!
+    var timelineControllerFactory: TimelineControllerFactoryMock!
     var roomFlowCoordinator: RoomFlowCoordinator!
     var navigationStackCoordinator: NavigationStackCoordinator!
     var cancellables = Set<AnyCancellable>()
@@ -218,6 +218,56 @@ class RoomFlowCoordinatorTests: XCTestCase {
         XCTAssert(navigationStackCoordinator.stackCoordinators.first is RoomScreenCoordinator)
     }
     
+    func testShareMediaRoute() async throws {
+        await setupRoomFlowCoordinator()
+        
+        try await process(route: .room(roomID: "1", via: []))
+        XCTAssert(navigationStackCoordinator.rootCoordinator is RoomScreenCoordinator)
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 0)
+        
+        let sharePayload: ShareExtensionPayload = .mediaFile(roomID: "1", mediaFile: .init(url: .picturesDirectory, suggestedName: nil))
+        try await process(route: .share(sharePayload))
+        
+        XCTAssert(navigationStackCoordinator.rootCoordinator is RoomScreenCoordinator)
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 0)
+        
+        XCTAssertTrue((navigationStackCoordinator.sheetCoordinator as? NavigationStackCoordinator)?.rootCoordinator is MediaUploadPreviewScreenCoordinator)
+        
+        try await process(route: .childRoom(roomID: "2", via: []))
+        XCTAssertNil(navigationStackCoordinator.sheetCoordinator)
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 1)
+        
+        try await process(route: .share(sharePayload))
+        
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 0)
+        XCTAssertTrue((navigationStackCoordinator.sheetCoordinator as? NavigationStackCoordinator)?.rootCoordinator is MediaUploadPreviewScreenCoordinator)
+    }
+    
+    func testShareTextRoute() async throws {
+        await setupRoomFlowCoordinator()
+        
+        try await process(route: .room(roomID: "1", via: []))
+        XCTAssert(navigationStackCoordinator.rootCoordinator is RoomScreenCoordinator)
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 0)
+        
+        let sharePayload: ShareExtensionPayload = .text(roomID: "1", text: "Important text")
+        try await process(route: .share(sharePayload))
+        
+        XCTAssert(navigationStackCoordinator.rootCoordinator is RoomScreenCoordinator)
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 0)
+        
+        XCTAssertNil(navigationStackCoordinator.sheetCoordinator, "The media upload sheet shouldn't be shown when sharing text.")
+        
+        try await process(route: .childRoom(roomID: "2", via: []))
+        XCTAssertNil(navigationStackCoordinator.sheetCoordinator)
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 1)
+        
+        try await process(route: .share(sharePayload))
+        
+        XCTAssertEqual(navigationStackCoordinator.stackCoordinators.count, 0)
+        XCTAssertNil(navigationStackCoordinator.sheetCoordinator, "The media upload sheet shouldn't be shown when sharing text.")
+    }
+    
     // MARK: - Private
     
     private func process(route: AppRoute) async throws {
@@ -261,22 +311,12 @@ class RoomFlowCoordinatorTests: XCTestCase {
     private func setupRoomFlowCoordinator(asChildFlow: Bool = false, roomType: RoomType? = nil) async {
         cancellables.removeAll()
         clientProxy = ClientProxyMock(.init(userID: "hi@bob", roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(.mockRooms)))))
-        timelineControllerFactory = RoomTimelineControllerFactoryMock(configuration: .init())
+        timelineControllerFactory = TimelineControllerFactoryMock(.init())
         
         clientProxy.roomPreviewForIdentifierViaClosure = { [roomType] roomID, _ in
             switch roomType {
             case .invited:
-                return .success(.init(roomID: roomID,
-                                      name: "Invite",
-                                      canonicalAlias: nil,
-                                      topic: nil,
-                                      avatarURL: nil,
-                                      memberCount: 0,
-                                      isHistoryWorldReadable: false,
-                                      isJoined: false,
-                                      isInvited: true,
-                                      isPublic: false,
-                                      canKnock: false))
+                return .success(RoomPreviewProxyMock.invited(roomID: roomID))
             default:
                 fatalError("Something isn't set up right")
             }
@@ -296,9 +336,9 @@ class RoomFlowCoordinatorTests: XCTestCase {
         roomFlowCoordinator = await RoomFlowCoordinator(roomID: roomID,
                                                         userSession: UserSessionMock(.init(clientProxy: clientProxy)),
                                                         isChildFlow: asChildFlow,
-                                                        roomTimelineControllerFactory: timelineControllerFactory,
+                                                        timelineControllerFactory: timelineControllerFactory,
                                                         navigationStackCoordinator: navigationStackCoordinator,
-                                                        emojiProvider: EmojiProvider(),
+                                                        emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
                                                         ongoingCallRoomIDPublisher: .init(.init(nil)),
                                                         appMediator: AppMediatorMock.default,
                                                         appSettings: ServiceLocator.shared.settings,

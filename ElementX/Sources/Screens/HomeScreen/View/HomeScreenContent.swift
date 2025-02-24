@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -16,13 +16,8 @@ struct HomeScreenContent: View {
     let scrollViewAdapter: ScrollViewAdapter
     
     var body: some View {
-        switch context.viewState.roomListMode {
-        case .migration:
-            migrationView
-        default:
-            roomList
-                .sentryTrace("\(Self.self)")
-        }
+        roomList
+            .sentryTrace("\(Self.self)")
     }
     
     private var roomList: some View {
@@ -59,8 +54,6 @@ struct HomeScreenContent: View {
                     .searchable(text: $context.searchQuery, placement: .navigationBarDrawer(displayMode: .always))
                     .compoundSearchField()
                     .disableAutocorrection(true)
-                case .migration:
-                    EmptyView()
                 }
             }
             .introspect(.scrollView, on: .supportedVersions) { scrollView in
@@ -73,10 +66,10 @@ struct HomeScreenContent: View {
             .onReceive(scrollViewAdapter.isScrolling) { _ in
                 updateVisibleRange()
             }
-            .onChange(of: context.searchQuery) { _ in
+            .onChange(of: context.searchQuery) {
                 updateVisibleRange()
             }
-            .onChange(of: context.viewState.visibleRooms) { _ in
+            .onChange(of: context.viewState.visibleRooms) {
                 updateVisibleRange()
                 
                 // We have been seeing a lot of issues around the room list not updating properly after
@@ -126,60 +119,18 @@ struct HomeScreenContent: View {
     @ViewBuilder
     private var topSection: some View {
         // An empty VStack causes glitches within the room list
-        if context.viewState.shouldShowFilters ||
-            context.viewState.shouldShowRecoveryKeyConfirmationBanner {
+        if context.viewState.shouldShowFilters || context.viewState.securityBannerMode.isShown {
             VStack(spacing: 0) {
                 if context.viewState.shouldShowFilters {
                     RoomListFiltersView(state: $context.filtersState)
                 }
-                
-                if context.viewState.shouldShowRecoveryKeyConfirmationBanner {
-                    HomeScreenRecoveryKeyConfirmationBanner(context: context)
+            
+                if case let .show(state) = context.viewState.securityBannerMode {
+                    HomeScreenRecoveryKeyConfirmationBanner(state: state, context: context)
                 }
             }
             .background(Color.compound.bgCanvasDefault)
         }
-    }
-    
-    @ViewBuilder
-    private var migrationView: some View {
-        if UIDevice.current.isPhone {
-            if verticalSizeClass == .compact {
-                migrationViewContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                WaitingDialog {
-                    migrationViewContent
-                } bottomContent: {
-                    EmptyView()
-                }
-            }
-        } else {
-            migrationViewContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-    
-    private var migrationViewContent: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .tint(.compound.iconPrimary)
-                .padding(.bottom, 4)
-            
-            Text(L10n.screenMigrationTitle.tinting(".", color: Asset.Colors.brandColor.swiftUIColor))
-                .minimumScaleFactor(0.01)
-                .font(.compound.headingXLBold)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.compound.textPrimary)
-            
-            Text(L10n.screenMigrationMessage)
-                .minimumScaleFactor(0.01)
-                .font(.compound.bodyLG)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.compound.textPrimary)
-                .accessibilityIdentifier(A11yIdentifiers.migrationScreen.message)
-        }
-        .padding(.horizontal)
     }
     
     /// Often times the scroll view's content size isn't correct yet when this method is called e.g. when cancelling a search

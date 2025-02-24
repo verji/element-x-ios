@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -92,7 +92,7 @@ class InviteUsersScreenViewModelTests: XCTestCase {
         let viewModel = InviteUsersScreenViewModel(clientProxy: ClientProxyMock(.init()),
                                                    selectedUsers: usersSubject.asCurrentValuePublisher(),
                                                    roomType: roomType,
-                                                   mediaProvider: MockMediaProvider(),
+                                                   mediaProvider: MediaProviderMock(configuration: .init()),
                                                    userDiscoveryService: userDiscoveryService,
                                                    userIndicatorController: UserIndicatorControllerMock())
         viewModel.state.usersSection = .init(type: .suggestions, users: [.mockAlice, .mockBob, .mockCharlie])

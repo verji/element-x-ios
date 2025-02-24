@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -12,14 +12,19 @@ import WysiwygComposer
 struct RoomAttachmentPicker: View {
     @ObservedObject var context: ComposerToolbarViewModel.Context
     
+    @Environment(\.isEnabled) private var isEnabled
+    
     var body: some View {
         // Use a menu instead of the popover/sheet shown in Figma because overriding the colour scheme
         // results in a rendering bug on 17.1: https://github.com/element-hq/element-x-ios/issues/2157
         Menu {
             menuContent
         } label: {
-            CompoundIcon(asset: Asset.Images.composerAttachment, size: .custom(30), relativeTo: .title)
-                .scaledPadding(7, relativeTo: .title)
+            CompoundIcon(asset: Asset.Images.composerAttachment, size: .custom(30), relativeTo: .compound.headingLG)
+                .scaledPadding(7, relativeTo: .compound.headingLG)
+                .foregroundColor(
+                    isEnabled ? .compound.iconPrimary : .compound.iconDisabled
+                )
         }
         .buttonStyle(RoomAttachmentPickerButtonStyle())
         .accessibilityLabel(L10n.actionAddToTimeline)
@@ -32,7 +37,6 @@ struct RoomAttachmentPicker: View {
                 context.send(viewAction: .enableTextFormatting)
             } label: {
                 Label(L10n.screenRoomAttachmentTextFormatting, icon: \.textFormatting)
-                    .labelStyle(.menuSheet)
             }
             .accessibilityIdentifier(A11yIdentifiers.roomScreen.attachmentPickerTextFormatting)
             
@@ -40,7 +44,6 @@ struct RoomAttachmentPicker: View {
                 context.send(viewAction: .attach(.poll))
             } label: {
                 Label(L10n.screenRoomAttachmentSourcePoll, icon: \.polls)
-                    .labelStyle(.menuSheet)
             }
             .accessibilityIdentifier(A11yIdentifiers.roomScreen.attachmentPickerPoll)
             
@@ -48,7 +51,6 @@ struct RoomAttachmentPicker: View {
                 context.send(viewAction: .attach(.location))
             } label: {
                 Label(L10n.screenRoomAttachmentSourceLocation, icon: \.locationPin)
-                    .labelStyle(.menuSheet)
             }
             .accessibilityIdentifier(A11yIdentifiers.roomScreen.attachmentPickerLocation)
             
@@ -56,7 +58,6 @@ struct RoomAttachmentPicker: View {
                 context.send(viewAction: .attach(.file))
             } label: {
                 Label(L10n.screenRoomAttachmentSourceFiles, icon: \.attachment)
-                    .labelStyle(.menuSheet)
             }
             .accessibilityIdentifier(A11yIdentifiers.roomScreen.attachmentPickerDocuments)
             
@@ -64,7 +65,6 @@ struct RoomAttachmentPicker: View {
                 context.send(viewAction: .attach(.photoLibrary))
             } label: {
                 Label(L10n.screenRoomAttachmentSourceGallery, icon: \.image)
-                    .labelStyle(.menuSheet)
             }
             .accessibilityIdentifier(A11yIdentifiers.roomScreen.attachmentPickerPhotoLibrary)
             
@@ -72,7 +72,6 @@ struct RoomAttachmentPicker: View {
                 context.send(viewAction: .attach(.camera))
             } label: {
                 Label(L10n.screenRoomAttachmentSourceCamera, icon: \.takePhoto)
-                    .labelStyle(.menuSheet)
             }
             .accessibilityIdentifier(A11yIdentifiers.roomScreen.attachmentPickerCamera)
         }
@@ -87,9 +86,10 @@ private struct RoomAttachmentPickerButtonStyle: ButtonStyle {
 }
 
 struct RoomAttachmentPicker_Previews: PreviewProvider, TestablePreview {
-    static let viewModel = ComposerToolbarViewModel(wysiwygViewModel: WysiwygComposerViewModel(),
+    static let viewModel = ComposerToolbarViewModel(roomProxy: JoinedRoomProxyMock(.init()),
+                                                    wysiwygViewModel: WysiwygComposerViewModel(),
                                                     completionSuggestionService: CompletionSuggestionServiceMock(configuration: .init()),
-                                                    mediaProvider: MockMediaProvider(),
+                                                    mediaProvider: MediaProviderMock(configuration: .init()),
                                                     mentionDisplayHelper: ComposerMentionDisplayHelper.mock,
                                                     analyticsService: ServiceLocator.shared.analytics,
                                                     composerDraftService: ComposerDraftServiceMock())

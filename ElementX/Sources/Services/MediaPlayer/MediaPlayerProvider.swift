@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -11,22 +11,10 @@ class MediaPlayerProvider: MediaPlayerProviderProtocol {
     private lazy var audioPlayer = AudioPlayer()
     private var audioPlayerStates: [String: AudioPlayerState] = [:]
     
+    var player: AudioPlayerProtocol { audioPlayer }
+    
     deinit {
         audioPlayerStates = [:]
-    }
-    
-    func player(for mediaSource: MediaSourceProxy) -> Result<MediaPlayerProtocol, MediaPlayerProviderError> {
-        guard let mimeType = mediaSource.mimeType else {
-            MXLog.error("Unknown mime type")
-            return .failure(.unsupportedMediaType)
-        }
-        
-        if mimeType.starts(with: "audio/") {
-            return .success(audioPlayer)
-        } else {
-            MXLog.error("Unsupported media type: \(mediaSource.mimeType ?? "unknown")")
-            return .failure(.unsupportedMediaType)
-        }
     }
     
     // MARK: - AudioPlayer

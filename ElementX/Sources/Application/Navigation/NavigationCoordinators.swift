@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -412,19 +412,17 @@ class NavigationSplitCoordinator: CoordinatorProtocol, ObservableObject, CustomS
 
 private struct NavigationSplitCoordinatorView: View {
     @State private var columnVisibility = NavigationSplitViewVisibility.all
-    @State private var isInSplitMode = true
     
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.scenePhase) private var scenePhase
     
     @ObservedObject var navigationSplitCoordinator: NavigationSplitCoordinator
     
     var body: some View {
         Group {
-            if isInSplitMode {
-                navigationSplitView
-            } else {
+            if horizontalSizeClass == .compact {
                 navigationStack
+            } else {
+                navigationSplitView
             }
         }
         // This needs to be handled on the top level otherwise sheets
@@ -449,25 +447,6 @@ private struct NavigationSplitCoordinatorView: View {
             }
             .animation(.elementDefault, value: navigationSplitCoordinator.overlayPresentationMode)
             .animation(.elementDefault, value: navigationSplitCoordinator.overlayModule)
-        }
-        // Handle `horizontalSizeClass` changes breaking the navigation bar
-        // https://github.com/element-hq/element-x-ios/issues/617
-        .onChange(of: horizontalSizeClass) { value in
-            guard scenePhase != .background else {
-                return
-            }
-            
-            isInSplitMode = value == .regular
-        }
-        .onChange(of: scenePhase) { value in
-            guard value == .active else {
-                return
-            }
-            
-            isInSplitMode = horizontalSizeClass == .regular
-        }
-        .task {
-            isInSplitMode = horizontalSizeClass == .regular
         }
     }
     

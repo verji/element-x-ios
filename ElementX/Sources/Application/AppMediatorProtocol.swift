@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -29,7 +29,7 @@ protocol AppMediatorProtocol {
     func requestAuthorizationIfNeeded() async -> Bool
 }
 
-extension UIApplication.State: CustomStringConvertible {
+extension UIApplication.State: @retroactive CustomStringConvertible {
     public var description: String {
         switch self {
         case .active:
@@ -44,7 +44,7 @@ extension UIApplication.State: CustomStringConvertible {
     }
 }
 
-extension UIUserInterfaceActiveAppearance: CustomStringConvertible {
+extension UIUserInterfaceActiveAppearance: @retroactive CustomStringConvertible {
     public var description: String {
         switch self {
         case .active:

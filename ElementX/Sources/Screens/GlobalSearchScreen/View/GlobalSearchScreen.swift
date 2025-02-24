@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -23,6 +23,7 @@ struct GlobalSearchScreen: View {
                     GlobalSearchScreenListRow(room: room, context: context)
                         .listRowBackground(backgroundColor(for: room))
                         .listRowInsets(.init())
+                        .contentShape(.rect)
                         .onTapGesture {
                             context.send(viewAction: .select(roomID: room.id))
                         }
@@ -48,7 +49,7 @@ struct GlobalSearchScreen: View {
             selectedRoom = context.viewState.rooms.first
             searchFieldFocus = true
         }
-        .onChange(of: context.viewState.rooms) { _ in
+        .onChange(of: context.viewState.rooms) {
             selectedRoom = context.viewState.rooms.first
         }
         .onTapGesture {
@@ -205,7 +206,7 @@ private class GlobalSearchTextField: UITextField {
 
 struct GlobalSearchScreen_Previews: PreviewProvider, TestablePreview {
     static let viewModel = GlobalSearchScreenViewModel(roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(.mockRooms))),
-                                                       mediaProvider: MockMediaProvider())
+                                                       mediaProvider: MediaProviderMock(configuration: .init()))
     
     static var previews: some View {
         NavigationStack {

@@ -1,19 +1,20 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
 import OrderedCollections
 
-enum RoomScreenViewModelAction {
+enum RoomScreenViewModelAction: Equatable {
     case focusEvent(eventID: String)
     case displayPinnedEventsTimeline
     case displayRoomDetails
     case displayCall
     case removeComposerFocus
+    case displayKnockRequests
 }
 
 enum RoomScreenViewAction {
@@ -21,28 +22,66 @@ enum RoomScreenViewAction {
     case viewAllPins
     case displayRoomDetails
     case displayCall
+    case footerViewAction(RoomScreenFooterViewAction)
+    case acceptKnock(eventID: String)
+    case dismissKnockRequests
+    case viewKnockRequests
 }
 
 struct RoomScreenViewState: BindableState {
     var roomTitle = ""
     var roomAvatar: RoomAvatar
+    var dmRecipientVerificationState: UserIdentityVerificationState?
     
     var lastScrollDirection: ScrollDirection?
-    var isPinningEnabled = false
     // This is used to control the banner
     var pinnedEventsBannerState: PinnedEventsBannerState = .loading(numbersOfEvents: 0)
     var shouldShowPinnedEventsBanner: Bool {
-        isPinningEnabled && !pinnedEventsBannerState.isEmpty && lastScrollDirection != .top
+        !pinnedEventsBannerState.isEmpty && lastScrollDirection != .top
     }
     
     var canJoinCall = false
     var hasOngoingCall: Bool
     var shouldShowCallButton = true
     
+    var isKnockingEnabled = false
+    var isKnockableRoom = false
+    var canAcceptKnocks = false
+    var canDeclineKnocks = false
+    var canBan = false
+    var unseenKnockRequests: [KnockRequestInfo] = []
+    var handledEventIDs: Set<String> = []
+    
+    var displayedKnockRequests: [KnockRequestInfo] {
+        unseenKnockRequests.filter { !handledEventIDs.contains($0.eventID) }
+    }
+    
+    var shouldSeeKnockRequests: Bool {
+        isKnockingEnabled &&
+            isKnockableRoom &&
+            !displayedKnockRequests.isEmpty &&
+            (canAcceptKnocks || canDeclineKnocks || canBan)
+    }
+    
+    var footerDetails: RoomScreenFooterViewDetails?
+    
     var bindings: RoomScreenViewStateBindings
 }
 
-struct RoomScreenViewStateBindings { }
+struct RoomScreenViewStateBindings {
+    /// The view model used to present a QuickLook media preview.
+    var mediaPreviewViewModel: TimelineMediaPreviewViewModel?
+}
+
+enum RoomScreenFooterViewAction {
+    case resolvePinViolation(userID: String)
+    case resolveVerificationViolation(userID: String)
+}
+
+enum RoomScreenFooterViewDetails {
+    case pinViolation(member: RoomMemberProxyProtocol, learnMoreURL: URL)
+    case verificationViolation(member: RoomMemberProxyProtocol, learnMoreURL: URL)
+}
 
 enum PinnedEventsBannerState: Equatable {
     case loading(numbersOfEvents: Int)

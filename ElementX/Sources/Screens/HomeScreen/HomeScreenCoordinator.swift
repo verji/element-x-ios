@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -21,9 +21,12 @@ enum HomeScreenCoordinatorAction {
     case presentSettingsScreen
     case presentFeedbackScreen
     case presentSecureBackupSettings
+    case presentRecoveryKeyScreen
+    case presentEncryptionResetScreen
     case presentStartChatScreen
     case presentGlobalSearch
     case presentRoomDirectorySearch
+    case logoutWithoutConfirmation
     case logout
 }
 
@@ -64,14 +67,20 @@ final class HomeScreenCoordinator: CoordinatorProtocol {
                     actionsSubject.send(.presentSettingsScreen)
                 case .presentSecureBackupSettings:
                     actionsSubject.send(.presentSecureBackupSettings)
-                case .logout:
-                    actionsSubject.send(.logout)
+                case .presentRecoveryKeyScreen:
+                    actionsSubject.send(.presentRecoveryKeyScreen)
+                case .presentEncryptionResetScreen:
+                    actionsSubject.send(.presentEncryptionResetScreen)
                 case .presentStartChatScreen:
                     actionsSubject.send(.presentStartChatScreen)
                 case .presentGlobalSearch:
                     actionsSubject.send(.presentGlobalSearch)
                 case .presentRoomDirectorySearch:
                     actionsSubject.send(.presentRoomDirectorySearch)
+                case .logoutWithoutConfirmation:
+                    actionsSubject.send(.logoutWithoutConfirmation)
+                case .logout:
+                    actionsSubject.send(.logout)
                 }
             }
             .store(in: &cancellables)

@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -25,6 +25,11 @@ extension RoomMemberProxyMock {
         self.init()
         userID = configuration.userID
         displayName = configuration.displayName
+        
+        if let displayName = configuration.displayName {
+            disambiguatedDisplayName = "\(displayName) (\(userID))"
+        }
+        
         avatarURL = configuration.avatarURL
         
         membership = configuration.membership
@@ -38,14 +43,14 @@ extension RoomMemberProxyMock {
     static var mockMe: RoomMemberProxyMock {
         RoomMemberProxyMock(with: .init(userID: "@me:matrix.org",
                                         displayName: "Me",
-                                        avatarURL: URL.picturesDirectory,
+                                        avatarURL: .mockMXCUserAvatar,
                                         membership: .join))
     }
     
     static var mockMeAdmin: RoomMemberProxyMock {
         RoomMemberProxyMock(with: .init(userID: "@me:matrix.org",
                                         displayName: "Me",
-                                        avatarURL: URL.picturesDirectory,
+                                        avatarURL: .mockMXCUserAvatar,
                                         membership: .join,
                                         powerLevel: 100,
                                         role: .administrator))
@@ -78,7 +83,7 @@ extension RoomMemberProxyMock {
     static var mockDan: RoomMemberProxyMock {
         RoomMemberProxyMock(with: .init(userID: "@dan:matrix.org",
                                         displayName: "Dan",
-                                        avatarURL: URL.picturesDirectory,
+                                        avatarURL: .mockMXCUserAvatar,
                                         membership: .join))
     }
     

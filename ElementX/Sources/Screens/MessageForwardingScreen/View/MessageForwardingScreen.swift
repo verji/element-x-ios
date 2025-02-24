@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -68,8 +68,8 @@ private struct MessageForwardingListRow: View {
     let context: MessageForwardingScreenViewModel.Context
     
     var body: some View {
-        ListRow(label: .avatar(title: room.name,
-                               description: room.alias ?? room.id,
+        ListRow(label: .avatar(title: room.title,
+                               description: room.description,
                                icon: avatar),
                 kind: .selection(isSelected: isSelected) {
                     context.send(viewAction: .selectRoom(roomID: room.id))
@@ -93,13 +93,13 @@ private struct MessageForwardingListRow: View {
 struct MessageForwardingScreen_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         let summaryProvider = RoomSummaryProviderMock(.init(state: .loaded(.mockRooms)))
-        let viewModel = MessageForwardingScreenViewModel(forwardingItem: .init(id: .init(timelineID: ""),
+        let viewModel = MessageForwardingScreenViewModel(forwardingItem: .init(id: .randomEvent,
                                                                                roomID: "",
                                                                                content: .init(noPointer: .init())),
                                                          clientProxy: ClientProxyMock(.init()),
                                                          roomSummaryProvider: summaryProvider,
                                                          userIndicatorController: UserIndicatorControllerMock(),
-                                                         mediaProvider: MockMediaProvider())
+                                                         mediaProvider: MediaProviderMock(configuration: .init()))
         
         NavigationStack {
             MessageForwardingScreen(context: viewModel.context)

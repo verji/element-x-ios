@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -14,7 +14,7 @@ struct TimelineItemStatusView: View {
     @EnvironmentObject private var context: TimelineViewModel.Context
 
     private var isLastOutgoingMessage: Bool {
-        timelineItem.isOutgoing && context.viewState.timelineViewState.timelineIDs.last == timelineItem.id.timelineID
+        timelineItem.isOutgoing && context.viewState.timelineState.uniqueIDs.last == timelineItem.id.uniqueID
     }
 
     var body: some View {
@@ -23,7 +23,7 @@ struct TimelineItemStatusView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        if context.viewState.isPinnedEventsTimeline {
+        if context.viewState.timelineKind == .pinned {
             // Do not display any status when is a pinned events timeline
             EmptyView()
         } else if context.viewState.showReadReceipts, !timelineItem.properties.orderedReadReceipts.isEmpty {

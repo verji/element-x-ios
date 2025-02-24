@@ -11,7 +11,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'Trigger-PR-Build')
 
     name: Release
-    runs-on: macos-14
+    runs-on: macos-15
     
     concurrency:
       # Only allow a single run of this workflow on each branch, automatically cancelling older runs.
@@ -41,7 +41,7 @@ jobs:
           p12-password: ${{ secrets.ALPHA_CERTIFICATES_P12_PASSWORD }}
 
       - name: Build alpha
-        run: bundle exec fastlane alpha
+        run: bundle exec fastlane build_alpha
         env:
           APPSTORECONNECT_KEY_ID: ${{ secrets.APPSTORECONNECT_KEY_ID }}
           APPSTORECONNECT_KEY_ISSUER_ID: ${{ secrets.APPSTORECONNECT_KEY_ISSUER_ID }}

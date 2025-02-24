@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -27,7 +27,7 @@ struct PinnedEventsTimelineScreen: View {
             .toolbar { toolbar }
             .background(.compound.bgCanvasDefault)
             .interactiveDismissDisabled()
-            .interactiveQuickLook(item: $timelineContext.mediaPreviewItem)
+            .timelineMediaPreview(viewModel: $context.mediaPreviewViewModel)
             .sheet(item: $timelineContext.debugInfo) { TimelineItemDebugView(info: $0) }
             .sheet(item: $timelineContext.actionMenuInfo) { info in
                 let actions = TimelineItemMenuActionProvider(timelineItem: info.item,
@@ -35,9 +35,10 @@ struct PinnedEventsTimelineScreen: View {
                                                              canCurrentUserRedactOthers: timelineContext.viewState.canCurrentUserRedactOthers,
                                                              canCurrentUserPin: timelineContext.viewState.canCurrentUserPin,
                                                              pinnedEventIDs: timelineContext.viewState.pinnedEventIDs,
-                                                             isDM: timelineContext.viewState.isEncryptedOneToOneRoom,
+                                                             isDM: timelineContext.viewState.isDirectOneToOneRoom,
                                                              isViewSourceEnabled: timelineContext.viewState.isViewSourceEnabled,
-                                                             isPinnedEventsTimeline: timelineContext.viewState.isPinnedEventsTimeline)
+                                                             timelineKind: timelineContext.viewState.timelineKind,
+                                                             emojiProvider: timelineContext.viewState.emojiProvider)
                     .makeActions()
                 if let actions {
                     TimelineItemMenu(item: info.item, actions: actions)
@@ -50,7 +51,7 @@ struct PinnedEventsTimelineScreen: View {
     private var content: some View {
         if timelineContext.viewState.pinnedEventIDs.isEmpty {
             VStack(spacing: 16) {
-                HeroImage(icon: \.pin, style: .normal)
+                BigIcon(icon: \.pin)
                 Text(L10n.screenPinnedTimelineEmptyStateHeadline)
                     .font(.compound.headingSMSemibold)
                     .foregroundStyle(.compound.textPrimary)
@@ -67,7 +68,7 @@ struct PinnedEventsTimelineScreen: View {
             TimelineView()
                 .id(timelineContext.viewState.roomID)
                 .environmentObject(timelineContext)
-                .environment(\.focussedEventID, timelineContext.viewState.timelineViewState.focussedEvent?.eventID)
+                .environment(\.focussedEventID, timelineContext.viewState.timelineState.focussedEvent?.eventID)
         }
     }
     
@@ -84,19 +85,21 @@ struct PinnedEventsTimelineScreen: View {
 // MARK: - Previews
 
 struct PinnedEventsTimelineScreen_Previews: PreviewProvider, TestablePreview {
-    static let viewModel = PinnedEventsTimelineScreenViewModel()
+    static let viewModel = PinnedEventsTimelineScreenViewModel(analyticsService: ServiceLocator.shared.analytics)
     static let emptyTimelineViewModel: TimelineViewModel = {
-        let timelineController = MockRoomTimelineController(timelineKind: .pinned)
+        let timelineController = MockTimelineController(timelineKind: .pinned)
         timelineController.timelineItems = []
         return TimelineViewModel(roomProxy: JoinedRoomProxyMock(.init(name: "Preview room")),
                                  timelineController: timelineController,
-                                 mediaProvider: MockMediaProvider(),
+                                 mediaProvider: MediaProviderMock(configuration: .init()),
                                  mediaPlayerProvider: MediaPlayerProviderMock(),
                                  voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                  userIndicatorController: UserIndicatorControllerMock(),
                                  appMediator: AppMediatorMock.default,
                                  appSettings: ServiceLocator.shared.settings,
-                                 analyticsService: ServiceLocator.shared.analytics)
+                                 analyticsService: ServiceLocator.shared.analytics,
+                                 emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                 timelineControllerFactory: TimelineControllerFactoryMock(.init()))
     }()
         
     static var previews: some View {

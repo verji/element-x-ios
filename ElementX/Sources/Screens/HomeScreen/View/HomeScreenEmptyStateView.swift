@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -63,7 +63,7 @@ struct HomeScreenEmptyStateLayout: Layout {
     }
     
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let mainView = subviews.first(where: { $0.priority > 0 })
+        let mainView = subviews.first { $0.priority > 0 }
         let topViews = subviews.filter { $0 != mainView }
         
         var y: CGFloat = bounds.minY

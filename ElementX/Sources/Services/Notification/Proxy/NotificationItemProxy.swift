@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -55,7 +55,7 @@ struct NotificationItemProxy: NotificationItemProxyProtocol {
     var senderAvatarMediaSource: MediaSourceProxy? {
         if let senderAvatarURLString = notificationItem.senderInfo.avatarUrl,
            let senderAvatarURL = URL(string: senderAvatarURLString) {
-            return MediaSourceProxy(url: senderAvatarURL, mimeType: nil)
+            return try? MediaSourceProxy(url: senderAvatarURL, mimeType: nil)
         }
         return nil
     }
@@ -63,7 +63,7 @@ struct NotificationItemProxy: NotificationItemProxyProtocol {
     var roomAvatarMediaSource: MediaSourceProxy? {
         if let roomAvatarURLString = notificationItem.roomInfo.avatarUrl,
            let roomAvatarURL = URL(string: roomAvatarURLString) {
-            return MediaSourceProxy(url: roomAvatarURL, mimeType: nil)
+            return try? MediaSourceProxy(url: roomAvatarURL, mimeType: nil)
         }
         return nil
     }

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -17,6 +17,7 @@ struct ElementCallWidgetMessage: Codable {
     
     enum Action: String, Codable {
         case hangup = "im.vector.hangup"
+        case close = "io.element.close"
         case mediaState = "io.element.device_mute"
     }
     
@@ -71,28 +72,36 @@ class ElementCallWidgetDriver: WidgetCapabilitiesProvider, ElementCallWidgetDriv
         
         let useEncryption = (try? room.isEncrypted()) ?? false
         
-        guard let widgetSettings = try? newVirtualElementCallWidget(props: .init(elementCallUrl: baseURL.absoluteString,
-                                                                                 widgetId: widgetID,
-                                                                                 parentUrl: nil,
-                                                                                 hideHeader: nil,
-                                                                                 preload: nil,
-                                                                                 fontScale: nil,
-                                                                                 appPrompt: false,
-                                                                                 skipLobby: true,
-                                                                                 confineToRoom: true,
-                                                                                 font: nil,
-                                                                                 analyticsId: nil,
-                                                                                 encryption: useEncryption ? .perParticipantKeys : .unencrypted)) else {
+        let widgetSettings: WidgetSettings
+        do {
+            widgetSettings = try newVirtualElementCallWidget(props: .init(elementCallUrl: baseURL.absoluteString,
+                                                                          widgetId: widgetID,
+                                                                          parentUrl: nil,
+                                                                          hideHeader: nil,
+                                                                          preload: nil,
+                                                                          fontScale: nil,
+                                                                          appPrompt: false,
+                                                                          skipLobby: true,
+                                                                          confineToRoom: true,
+                                                                          font: nil,
+                                                                          analyticsId: nil,
+                                                                          encryption: useEncryption ? .perParticipantKeys : .unencrypted))
+        } catch {
+            MXLog.error("Failed to build widget settings: \(error)")
             return .failure(.failedBuildingWidgetSettings)
         }
         
         let languageTag = "\(Locale.current.language.languageCode ?? "en")-\(Locale.current.language.region ?? "US")"
         let theme = colorScheme == .light ? "light" : "dark"
         
-        guard let urlString = try? await generateWebviewUrl(widgetSettings: widgetSettings, room: room,
-                                                            props: .init(clientId: clientID,
-                                                                         languageTag: languageTag,
-                                                                         theme: theme)) else {
+        let urlString: String
+        do {
+            urlString = try await generateWebviewUrl(widgetSettings: widgetSettings, room: room,
+                                                     props: .init(clientId: clientID,
+                                                                  languageTag: languageTag,
+                                                                  theme: theme))
+        } catch {
+            MXLog.error("Failed to generate web view URL: \(error)")
             return .failure(.failedBuildingCallURL)
         }
         
@@ -100,7 +109,11 @@ class ElementCallWidgetDriver: WidgetCapabilitiesProvider, ElementCallWidgetDriv
             return .failure(.failedParsingCallURL)
         }
         
-        guard let widgetDriver = try? makeWidgetDriver(settings: widgetSettings) else {
+        let widgetDriver: WidgetDriverAndHandle
+        do {
+            widgetDriver = try makeWidgetDriver(settings: widgetSettings)
+        } catch {
+            MXLog.error("Failed to build widget driver: \(error)")
             return .failure(.failedBuildingWidgetDriver)
         }
         
@@ -169,6 +182,8 @@ class ElementCallWidgetDriver: WidgetCapabilitiesProvider, ElementCallWidgetDriv
             if widgetMessage.direction == .fromWidget {
                 switch widgetMessage.action {
                 case .hangup:
+                    break
+                case .close:
                     actionsSubject.send(.callEnded)
                 case .mediaState:
                     guard let audioEnabled = widgetMessage.data.audioEnabled,

@@ -1,8 +1,8 @@
 //
 // Copyright 2021-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -27,7 +27,7 @@ struct NotificationPermissionsScreen: View {
     /// The main content of the screen that is shown inside the scroll view.
     private var mainContent: some View {
         VStack(spacing: 8) {
-            HeroImage(icon: \.notificationsSolid)
+            BigIcon(icon: \.notificationsSolid)
                 .padding(.bottom, 8)
             
             Text(L10n.screenNotificationOptinTitle)

@@ -1,20 +1,38 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
 import MatrixRustSDK
 
 struct RoomSummary {
+    enum JoinRequestType {
+        case invite(inviter: RoomMemberProxyProtocol?)
+        case knock
+        
+        var isInvite: Bool {
+            switch self {
+            case .invite: true
+            default: false
+            }
+        }
+        
+        var isKnock: Bool {
+            switch self {
+            case .knock: true
+            default: false
+            }
+        }
+    }
+
     let roomListItem: RoomListItem
     
     let id: String
     
-    let isInvite: Bool
-    let inviter: RoomMemberProxyProtocol?
+    let joinRequestType: JoinRequestType?
     
     let name: String
     let isDirect: Bool
@@ -49,6 +67,20 @@ extension RoomSummary: CustomStringConvertible {
     - notificationMode: \(notificationMode?.rawValue ?? "nil")
     """
     }
+    
+    /// Used where summaries are shown in a list e.g. message forwarding,
+    /// global search, share destination list etc.
+    var roomListDescription: String {
+        if isDirect {
+            return canonicalAlias ?? ""
+        }
+        
+        if let alias = canonicalAlias {
+            return alias
+        }
+        
+        return heroes.compactMap(\.displayName).formatted(.list(type: .and))
+    }
 }
 
 extension RoomSummary {
@@ -67,10 +99,9 @@ extension RoomSummary {
         unreadNotificationsCount = hasUnreadNotifications ? 1 : 0
         notificationMode = settingsMode
         canonicalAlias = nil
-        inviter = nil
         hasOngoingCall = false
         
-        isInvite = false
+        joinRequestType = nil
         isMarkedUnread = false
         isFavourite = false
     }

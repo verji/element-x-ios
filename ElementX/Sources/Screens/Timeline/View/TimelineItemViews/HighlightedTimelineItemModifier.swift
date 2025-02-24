@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -89,14 +89,16 @@ struct HighlightedTimelineItemTimeline_Previews: PreviewProvider {
     static let focussedEventID = "RoomTimelineItemFixtures.default.5"
     static let timelineViewModel = TimelineViewModel(roomProxy: roomProxyMock,
                                                      focussedEventID: focussedEventID,
-                                                     timelineController: MockRoomTimelineController(),
-                                                     mediaProvider: MockMediaProvider(),
+                                                     timelineController: MockTimelineController(),
+                                                     mediaProvider: MediaProviderMock(configuration: .init()),
                                                      mediaPlayerProvider: MediaPlayerProviderMock(),
                                                      voiceMessageMediaManager: VoiceMessageMediaManagerMock(),
                                                      userIndicatorController: ServiceLocator.shared.userIndicatorController,
                                                      appMediator: AppMediatorMock.default,
                                                      appSettings: ServiceLocator.shared.settings,
-                                                     analyticsService: ServiceLocator.shared.analytics)
+                                                     analyticsService: ServiceLocator.shared.analytics,
+                                                     emojiProvider: EmojiProvider(appSettings: ServiceLocator.shared.settings),
+                                                     timelineControllerFactory: TimelineControllerFactoryMock(.init()))
 
     static var previews: some View {
         NavigationStack {

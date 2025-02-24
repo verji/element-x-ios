@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -17,9 +17,9 @@ class AuthenticationStartScreenViewModel: AuthenticationStartScreenViewModelType
         actionsSubject.eraseToAnyPublisher()
     }
 
-    init() {
-        super.init(initialViewState: AuthenticationStartScreenViewState())
-        state.isQRCodeLoginEnabled = !ProcessInfo.processInfo.isiOSAppOnMac && AppSettings.isDevelopmentBuild
+    init(webRegistrationEnabled: Bool) {
+        super.init(initialViewState: AuthenticationStartScreenViewState(isWebRegistrationEnabled: webRegistrationEnabled,
+                                                                        isQRCodeLoginEnabled: !ProcessInfo.processInfo.isiOSAppOnMac))
     }
 
     override func process(viewAction: AuthenticationStartScreenViewAction) {
@@ -28,6 +28,8 @@ class AuthenticationStartScreenViewModel: AuthenticationStartScreenViewModelType
             actionsSubject.send(.loginManually)
         case .loginWithQR:
             actionsSubject.send(.loginWithQR)
+        case .register:
+            actionsSubject.send(.register)
         case .reportProblem:
             actionsSubject.send(.reportProblem)
         }

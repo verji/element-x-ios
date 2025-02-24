@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -16,8 +16,8 @@ struct GlobalSearchScreenListRow: View {
     
     var body: some View {
         ZStack { // The list row swallows listRowBackgrounds for some reason
-            ListRow(label: .avatar(title: room.name,
-                                   description: room.alias ?? room.id,
+            ListRow(label: .avatar(title: room.title,
+                                   description: room.description,
                                    icon: avatar),
                     kind: .label)
         }
@@ -37,16 +37,16 @@ struct GlobalSearchScreenListRow: View {
 
 struct GlobalSearchScreenListRow_Previews: PreviewProvider, TestablePreview {
     static let viewModel = GlobalSearchScreenViewModel(roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(.mockRooms))),
-                                                       mediaProvider: MockMediaProvider())
+                                                       mediaProvider: MediaProviderMock(configuration: .init()))
     
     static var previews: some View {
         List {
             GlobalSearchScreenListRow(room: .init(id: "123",
-                                                  name: "Tech central",
-                                                  alias: "The best place in the whole wide world",
+                                                  title: "Tech central",
+                                                  description: "The best place in the whole wide world",
                                                   avatar: .room(id: "123",
                                                                 name: "Tech central",
-                                                                avatarURL: .picturesDirectory)),
+                                                                avatarURL: .mockMXCAvatar)),
                                       context: viewModel.context)
         }
     }

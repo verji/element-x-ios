@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -13,6 +13,8 @@ class SessionVerificationScreenStateMachine {
     enum State: StateType {
         /// The initial state, before verification started
         case initial
+        /// Accepting the remote verification request
+        case acceptingVerificationRequest
         /// Waiting for verification acceptance
         case requestingVerification
         /// Verification request accepted. Waiting for start
@@ -37,6 +39,8 @@ class SessionVerificationScreenStateMachine {
     
     /// Events that can be triggered on the SessionVerification state machine
     enum Event: EventType {
+        /// Accept the remote verification request
+        case acceptVerificationRequest
         /// Request verification
         case requestVerification
         /// The current verification request has been accepted
@@ -69,16 +73,23 @@ class SessionVerificationScreenStateMachine {
         stateMachine.state
     }
 
-    init() {
-        stateMachine = StateMachine(state: .initial)
+    init(state: State) {
+        stateMachine = StateMachine(state: state)
         configure()
     }
     
     private func configure() {
+        stateMachine.addRoutes(event: .acceptVerificationRequest, transitions: [.initial => .acceptingVerificationRequest])
         stateMachine.addRoutes(event: .requestVerification, transitions: [.initial => .requestingVerification])
-        stateMachine.addRoutes(event: .didAcceptVerificationRequest, transitions: [.requestingVerification => .verificationRequestAccepted])
+        
+        stateMachine.addRoutes(event: .didAcceptVerificationRequest, transitions: [.acceptingVerificationRequest => .verificationRequestAccepted,
+                                                                                   .requestingVerification => .verificationRequestAccepted])
+        
         stateMachine.addRoutes(event: .startSasVerification, transitions: [.verificationRequestAccepted => .startingSasVerification])
-        stateMachine.addRoutes(event: .didFail, transitions: [.requestingVerification => .initial])
+        
+        stateMachine.addRoutes(event: .didFail, transitions: [.requestingVerification => .initial,
+                                                              .acceptingVerificationRequest => .initial])
+        
         stateMachine.addRoutes(event: .restart, transitions: [.cancelled => .initial])
         
         // Transitions with associated values need to be handled through `addRouteMapping`

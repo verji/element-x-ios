@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -77,17 +77,11 @@ final class QRCodeLoginService: QRCodeLoginServiceProtocol {
     }
     
     private func rotateSessionDirectory() {
-        if FileManager.default.directoryExists(at: sessionDirectories.dataDirectory) {
-            try? FileManager.default.removeItem(at: sessionDirectories.dataDirectory)
-        }
-        if FileManager.default.directoryExists(at: sessionDirectories.cacheDirectory) {
-            try? FileManager.default.removeItem(at: sessionDirectories.cacheDirectory)
-        }
-        
+        sessionDirectories.delete()
         sessionDirectories = .init()
     }
     
-    private func userSession(for client: Client) async -> Result<UserSessionProtocol, QRCodeLoginServiceError> {
+    private func userSession(for client: ClientProtocol) async -> Result<UserSessionProtocol, QRCodeLoginServiceError> {
         switch await userSessionStore.userSession(for: client, sessionDirectories: sessionDirectories, passphrase: passphrase) {
         case .success(let session):
             return .success(session)

@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -14,7 +14,6 @@ import XCTest
 class HomeScreenRoomTests: XCTestCase {
     var roomSummary: RoomSummary!
     
-    // swiftlint:disable:next function_parameter_count
     func setupRoomSummary(isMarkedUnread: Bool,
                           unreadMessagesCount: UInt,
                           unreadMentionsCount: UInt,
@@ -23,8 +22,7 @@ class HomeScreenRoomTests: XCTestCase {
                           hasOngoingCall: Bool) {
         roomSummary = RoomSummary(roomListItem: .init(noPointer: .init()),
                                   id: "Test room",
-                                  isInvite: false,
-                                  inviter: nil,
+                                  joinRequestType: nil,
                                   name: "Test room",
                                   isDirect: false,
                                   avatarURL: nil,

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -13,12 +13,7 @@ enum DeveloperOptionsScreenViewModelAction {
 
 struct DeveloperOptionsScreenViewState: BindableState {
     let elementCallBaseURL: URL
-    let isUsingNativeSlidingSync: Bool
     var bindings: DeveloperOptionsScreenViewStateBindings
-    
-    var slidingSyncFooter: String {
-        "The method used to configure sliding sync when signing in. Changing this setting has no effect until you sign out.\n\nYour current session is using \(isUsingNativeSlidingSync ? "native sliding sync." : "a sliding sync proxy.")"
-    }
 }
 
 // periphery: ignore - subscripts are seen as false positive
@@ -41,12 +36,15 @@ enum DeveloperOptionsScreenViewAction {
 }
 
 protocol DeveloperOptionsProtocol: AnyObject {
-    var logLevel: TracingConfiguration.LogLevel { get set }
-    var slidingSyncDiscovery: AppSettings.SlidingSyncDiscovery { get set }
+    var logLevel: LogLevel { get set }
+    var publicSearchEnabled: Bool { get set }
     var hideUnreadMessagesBadge: Bool { get set }
-    var elementCallBaseURLOverride: URL? { get set }
     var fuzzyRoomListSearchEnabled: Bool { get set }
-    var pinningEnabled: Bool { get set }
+    var hideTimelineMedia: Bool { get set }
+    var enableOnlySignedDeviceIsolationMode: Bool { get set }
+    var elementCallBaseURLOverride: URL? { get set }
+    var knockingEnabled: Bool { get set }
+    var eventCacheEnabled: Bool { get set }
 }
 
 extension AppSettings: DeveloperOptionsProtocol { }

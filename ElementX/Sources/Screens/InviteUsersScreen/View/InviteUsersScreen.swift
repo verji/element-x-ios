@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -110,7 +110,7 @@ struct InviteUsersScreen: View {
                         .frame(width: cellWidth)
                     }
                 }
-                .onChange(of: context.viewState.scrollToLastID) { lastAddedID in
+                .onChange(of: context.viewState.scrollToLastID) { _, lastAddedID in
                     guard let id = lastAddedID else { return }
                     withElementAnimation(.easeInOut) {
                         scrollView.scrollTo(id)
@@ -154,7 +154,7 @@ struct InviteUsersScreen_Previews: PreviewProvider, TestablePreview {
         return InviteUsersScreenViewModel(clientProxy: ClientProxyMock(.init()),
                                           selectedUsers: .init([]),
                                           roomType: .draft,
-                                          mediaProvider: MockMediaProvider(),
+                                          mediaProvider: MediaProviderMock(configuration: .init()),
                                           userDiscoveryService: userDiscoveryService,
                                           userIndicatorController: UserIndicatorControllerMock())
     }()

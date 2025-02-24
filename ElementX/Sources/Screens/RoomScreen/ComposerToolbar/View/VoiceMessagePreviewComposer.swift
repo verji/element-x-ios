@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import DSWaveformImage
@@ -48,8 +48,8 @@ struct VoiceMessagePreviewComposer: View {
                                      showCursor: playerState.showProgressIndicator,
                                      onSeek: onSeek)
         }
-        .onChange(of: isDragging) { isDragging in
-            onScrubbing(isDragging)
+        .onChange(of: isDragging) { _, newValue in
+            onScrubbing(newValue)
         }
         .padding(.vertical, 4.0)
         .padding(.horizontal, 6.0)
@@ -97,6 +97,7 @@ private extension DateFormatter {
 
 struct VoiceMessagePreviewComposer_Previews: PreviewProvider, TestablePreview {
     static let playerState = AudioPlayerState(id: .recorderPreview,
+                                              title: L10n.commonVoiceMessage,
                                               duration: 10.0,
                                               waveform: EstimatedWaveform.mockWaveform,
                                               progress: 0.4)

@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -11,9 +11,9 @@ import SwiftUI
 struct ServerSelectionScreenCoordinatorParameters {
     /// The service used to authenticate the user.
     let authenticationService: AuthenticationServiceProtocol
+    let authenticationFlow: AuthenticationFlow
+    let slidingSyncLearnMoreURL: URL
     let userIndicatorController: UserIndicatorControllerProtocol
-    /// Whether the screen is presented modally or within a navigation stack.
-    let isModallyPresented: Bool
 }
 
 enum ServerSelectionScreenCoordinatorAction {
@@ -21,6 +21,7 @@ enum ServerSelectionScreenCoordinatorAction {
     case dismiss
 }
 
+// Note: This code was brought over from Riot, we should move the authentication service logic into the view model.
 final class ServerSelectionScreenCoordinator: CoordinatorProtocol {
     private let parameters: ServerSelectionScreenCoordinatorParameters
     private let userIndicatorController: UserIndicatorControllerProtocol
@@ -36,9 +37,10 @@ final class ServerSelectionScreenCoordinator: CoordinatorProtocol {
     
     init(parameters: ServerSelectionScreenCoordinatorParameters) {
         self.parameters = parameters
-        viewModel = ServerSelectionScreenViewModel(homeserverAddress: parameters.authenticationService.homeserver.value.address,
-                                                   slidingSyncLearnMoreURL: ServiceLocator.shared.settings.slidingSyncLearnMoreURL,
-                                                   isModallyPresented: parameters.isModallyPresented)
+        viewModel = ServerSelectionScreenViewModel(authenticationService: parameters.authenticationService,
+                                                   authenticationFlow: parameters.authenticationFlow,
+                                                   slidingSyncLearnMoreURL: parameters.slidingSyncLearnMoreURL,
+                                                   userIndicatorController: parameters.userIndicatorController)
         userIndicatorController = parameters.userIndicatorController
     }
     
@@ -50,8 +52,8 @@ final class ServerSelectionScreenCoordinator: CoordinatorProtocol {
                 guard let self else { return }
                 
                 switch action {
-                case .confirm(let homeserverAddress):
-                    self.useHomeserver(homeserverAddress)
+                case .updated:
+                    actionsSubject.send(.updated)
                 case .dismiss:
                     actionsSubject.send(.dismiss)
                 }
@@ -60,54 +62,10 @@ final class ServerSelectionScreenCoordinator: CoordinatorProtocol {
     }
     
     func stop() {
-        stopLoading()
+        parameters.userIndicatorController.retractAllIndicators()
     }
     
     func toPresentable() -> AnyView {
         AnyView(ServerSelectionScreen(context: viewModel.context))
-    }
-    
-    // MARK: - Private
-    
-    private func startLoading(label: String = L10n.commonLoading) {
-        userIndicatorController.submitIndicator(UserIndicator(type: .modal,
-                                                              title: label,
-                                                              persistent: true))
-    }
-    
-    private func stopLoading() {
-        userIndicatorController.retractAllIndicators()
-    }
-    
-    /// Updates the login flow using the supplied homeserver address, or shows an error when this isn't possible.
-    private func useHomeserver(_ homeserverAddress: String) {
-        startLoading()
-        
-        Task {
-            switch await authenticationService.configure(for: homeserverAddress) {
-            case .success:
-                MXLog.info("Selected homeserver: \(homeserverAddress)")
-                actionsSubject.send(.updated)
-                stopLoading()
-            case .failure(let error):
-                MXLog.info("Invalid homeserver: \(homeserverAddress)")
-                stopLoading()
-                handleError(error)
-            }
-        }
-    }
-    
-    /// Processes an error to either update the flow or display it to the user.
-    private func handleError(_ error: AuthenticationServiceError) {
-        switch error {
-        case .invalidServer, .invalidHomeserverAddress:
-            viewModel.displayError(.footerMessage(L10n.screenChangeServerErrorInvalidHomeserver))
-        case .invalidWellKnown(let error):
-            viewModel.displayError(.invalidWellKnownAlert(error))
-        case .slidingSyncNotAvailable:
-            viewModel.displayError(.slidingSyncAlert)
-        default:
-            viewModel.displayError(.footerMessage(L10n.errorUnknown))
-        }
     }
 }

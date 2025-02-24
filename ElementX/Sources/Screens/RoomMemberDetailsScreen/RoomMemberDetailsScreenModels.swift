@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -11,16 +11,30 @@ enum RoomMemberDetailsScreenViewModelAction {
     case openUserProfile
     case openDirectChat(roomID: String)
     case startCall(roomID: String)
+    case verifyUser(userID: String)
 }
 
 struct RoomMemberDetailsScreenViewState: BindableState {
     let userID: String
     var memberDetails: RoomMemberDetails?
+    var verificationState: UserIdentityVerificationState?
     var isOwnMemberDetails = false
     var isProcessingIgnoreRequest = false
     var dmRoomID: String?
 
     var bindings: RoomMemberDetailsScreenViewStateBindings
+    
+    var showVerifiedBadge: Bool {
+        verificationState == .verified // We purposely show the badge on your own account for consistency with Web.
+    }
+    
+    var showVerifyIdentitySection: Bool {
+        verificationState == .notVerified && !isOwnMemberDetails
+    }
+    
+    var showWithdrawVerificationSection: Bool {
+        verificationState == .verificationViolation && !isOwnMemberDetails
+    }
 }
 
 struct RoomMemberDetailsScreenViewStateBindings {
@@ -63,7 +77,8 @@ struct RoomMemberDetailsScreenViewStateBindings {
     }
     
     var ignoreUserAlert: IgnoreUserAlertItem?
-    var alertInfo: AlertInfo<RoomMemberDetailsScreenError>?
+    var alertInfo: AlertInfo<RoomMemberDetailsScreenAlertType>?
+    var inviteConfirmationUser: UserProfileProxy?
     
     /// A media item that will be previewed with QuickLook.
     var mediaPreviewItem: MediaPreviewItem?
@@ -74,12 +89,15 @@ enum RoomMemberDetailsScreenViewAction {
     case showIgnoreAlert
     case ignoreConfirmed
     case unignoreConfirmed
-    case displayAvatar
+    case displayAvatar(URL)
     case openDirectChat
+    case createDirectChat
     case startCall(roomID: String)
+    case verifyUser
+    case withdrawVerification
 }
 
-enum RoomMemberDetailsScreenError: Hashable {
+enum RoomMemberDetailsScreenAlertType: Hashable {
     case failedOpeningDirectChat
     case unknown
 }

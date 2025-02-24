@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -10,7 +10,7 @@ import SwiftUI
 
 struct RoomPollsHistoryScreenCoordinatorParameters {
     let pollInteractionHandler: PollInteractionHandlerProtocol
-    let roomTimelineController: RoomTimelineControllerProtocol
+    let timelineController: TimelineControllerProtocol
 }
 
 enum RoomPollsHistoryScreenCoordinatorAction {
@@ -28,7 +28,7 @@ final class RoomPollsHistoryScreenCoordinator: CoordinatorProtocol {
     
     init(parameters: RoomPollsHistoryScreenCoordinatorParameters) {
         viewModel = RoomPollsHistoryScreenViewModel(pollInteractionHandler: parameters.pollInteractionHandler,
-                                                    roomTimelineController: parameters.roomTimelineController,
+                                                    timelineController: parameters.timelineController,
                                                     userIndicatorController: ServiceLocator.shared.userIndicatorController)
     }
     

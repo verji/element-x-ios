@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -46,7 +46,7 @@ final class ComposerDraftService: ComposerDraftServiceProtocol {
     func getReply(eventID: String) async -> Result<TimelineItemReply, ComposerDraftServiceError> {
         switch await roomProxy.timeline.getLoadedReplyDetails(eventID: eventID) {
         case .success(let replyDetails):
-            return await .success(timelineItemfactory.buildReply(details: replyDetails))
+            return .success(timelineItemfactory.buildReply(details: replyDetails))
         case .failure(let error):
             MXLog.error("Could not load reply: \(error)")
             return .failure(.failedToLoadReply)

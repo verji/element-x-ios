@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -47,8 +47,8 @@ struct RoomPollsHistoryScreen: View {
         }
         .pickerStyle(.segmented)
         .readableFrame(maxWidth: 475)
-        .onChange(of: context.filter) { value in
-            context.send(viewAction: .filter(value))
+        .onChange(of: context.filter) { _, newValue in
+            context.send(viewAction: .filter(newValue))
         }
     }
     
@@ -91,7 +91,7 @@ struct RoomPollsHistoryScreen: View {
         Button {
             context.send(viewAction: .loadMore)
         } label: {
-            Text(L10n.Action.loadMore)
+            Text(L10n.actionLoadMore)
                 .font(.compound.bodyLGSemibold)
                 .padding(.horizontal, 12)
         }
@@ -114,33 +114,33 @@ private extension DateFormatter {
 
 struct RoomPollsHistoryScreen_Previews: PreviewProvider, TestablePreview {
     static let viewModelEmpty: RoomPollsHistoryScreenViewModel = {
-        let roomTimelineController = MockRoomTimelineController()
-        roomTimelineController.timelineItems = []
+        let timelineController = MockTimelineController()
+        timelineController.timelineItems = []
         let roomProxyMockConfiguration = JoinedRoomProxyMockConfiguration(name: "Polls")
         let viewModel = RoomPollsHistoryScreenViewModel(pollInteractionHandler: PollInteractionHandlerMock(),
-                                                        roomTimelineController: roomTimelineController,
+                                                        timelineController: timelineController,
                                                         userIndicatorController: UserIndicatorControllerMock())
         return viewModel
     }()
 
     static let viewModel: RoomPollsHistoryScreenViewModel = {
-        let roomTimelineController = MockRoomTimelineController()
+        let timelineController = MockTimelineController()
         
         let polls = [PollRoomTimelineItem.mock(poll: .disclosed(createdByAccountOwner: false)),
                      PollRoomTimelineItem.mock(poll: .disclosed(createdByAccountOwner: true)),
                      PollRoomTimelineItem.mock(poll: .emptyDisclosed, isEditable: true)]
         
-        roomTimelineController.timelineItems = polls
+        timelineController.timelineItems = polls
 
         for i in 0..<polls.count {
             let item = polls[i]
             let date: Date! = DateComponents(calendar: .current, timeZone: .gmt, year: 2023, month: 12, day: 1 + i, hour: 12).date
-            roomTimelineController.timelineItemsTimestamp[item.id] = date
+            timelineController.timelineItemsTimestamp[item.id] = date
         }
 
         let roomProxyMockConfiguration = JoinedRoomProxyMockConfiguration(name: "Polls", timelineStartReached: true)
         let viewModel = RoomPollsHistoryScreenViewModel(pollInteractionHandler: PollInteractionHandlerMock(),
-                                                        roomTimelineController: roomTimelineController,
+                                                        timelineController: timelineController,
                                                         userIndicatorController: UserIndicatorControllerMock())
         
         return viewModel
@@ -151,12 +151,10 @@ struct RoomPollsHistoryScreen_Previews: PreviewProvider, TestablePreview {
             RoomPollsHistoryScreen(context: viewModelEmpty.context)
         }
         .previewDisplayName("No polls")
-        .snapshot(delay: 1.0)
 
         NavigationStack {
             RoomPollsHistoryScreen(context: viewModel.context)
         }
         .previewDisplayName("polls")
-        .snapshot(delay: 1.0)
     }
 }

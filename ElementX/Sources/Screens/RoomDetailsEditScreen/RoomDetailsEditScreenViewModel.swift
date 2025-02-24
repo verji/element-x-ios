@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -14,7 +14,7 @@ class RoomDetailsEditScreenViewModel: RoomDetailsEditScreenViewModelType, RoomDe
     private let actionsSubject: PassthroughSubject<RoomDetailsEditScreenViewModelAction, Never> = .init()
     private let roomProxy: JoinedRoomProxyProtocol
     private let userIndicatorController: UserIndicatorControllerProtocol
-    private let mediaPreprocessor: MediaUploadingPreprocessor = .init()
+    private let mediaUploadingPreprocessor: MediaUploadingPreprocessor
     
     var actions: AnyPublisher<RoomDetailsEditScreenViewModelAction, Never> {
         actionsSubject.eraseToAnyPublisher()
@@ -22,13 +22,15 @@ class RoomDetailsEditScreenViewModel: RoomDetailsEditScreenViewModelType, RoomDe
     
     init(roomProxy: JoinedRoomProxyProtocol,
          mediaProvider: MediaProviderProtocol,
+         mediaUploadingPreprocessor: MediaUploadingPreprocessor,
          userIndicatorController: UserIndicatorControllerProtocol) {
         self.roomProxy = roomProxy
+        self.mediaUploadingPreprocessor = mediaUploadingPreprocessor
         self.userIndicatorController = userIndicatorController
         
-        let roomAvatar = roomProxy.avatarURL
-        let roomName = roomProxy.name
-        let roomTopic = roomProxy.topic
+        let roomAvatar = roomProxy.infoPublisher.value.avatarURL
+        let roomName = roomProxy.infoPublisher.value.displayName
+        let roomTopic = roomProxy.infoPublisher.value.topic
         
         super.init(initialViewState: RoomDetailsEditScreenViewState(roomID: roomProxy.id,
                                                                     initialAvatarURL: roomAvatar,
@@ -76,7 +78,7 @@ class RoomDetailsEditScreenViewModel: RoomDetailsEditScreenViewModelType, RoomDe
                                                                   title: L10n.commonLoading,
                                                                   persistent: true))
             
-            let mediaResult = await mediaPreprocessor.processMedia(at: url)
+            let mediaResult = await mediaUploadingPreprocessor.processMedia(at: url)
             
             switch mediaResult {
             case .success(.image):

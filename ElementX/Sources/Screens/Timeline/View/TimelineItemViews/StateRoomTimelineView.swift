@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import SwiftUI
@@ -30,9 +30,9 @@ struct StateRoomTimelineView_Previews: PreviewProvider, TestablePreview {
         StateRoomTimelineView(timelineItem: item)
     }
     
-    static let item = StateRoomTimelineItem(id: .random,
+    static let item = StateRoomTimelineItem(id: .randomVirtual,
                                             body: "Alice joined",
-                                            timestamp: "Now",
+                                            timestamp: .mock,
                                             isOutgoing: false,
                                             isEditable: false,
                                             canBeRepliedTo: true,

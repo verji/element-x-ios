@@ -1,8 +1,8 @@
 //
 // Copyright 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Compound
@@ -57,7 +57,7 @@ private struct TimelineItemSendInfoLabel: View {
     
     var statusIcon: KeyPath<CompoundIcons, Image>? {
         switch sendInfo.status {
-        case .sendingFailed: \.error
+        case .sendingFailed: \.errorSolid
         case .encryptionAuthenticity(let authenticity): authenticity.icon
         case .none: nil
         }
@@ -152,12 +152,20 @@ private extension TimelineItemSendInfo {
         layoutType = switch timelineItem {
         case is TextBasedRoomTimelineItem:
             .overlay(capsuleStyle: false)
-        case is ImageRoomTimelineItem,
-             is VideoRoomTimelineItem,
-             is StickerRoomTimelineItem:
+        case let message as EventBasedMessageTimelineItemProtocol:
+            switch message {
+            case is ImageRoomTimelineItem, is VideoRoomTimelineItem:
+                .overlay(capsuleStyle: !message.hasMediaCaption)
+            case is AudioRoomTimelineItem, is FileRoomTimelineItem:
+                // swiftlint:disable:next void_function_in_ternary
+                message.hasMediaCaption ? .overlay(capsuleStyle: false) : .horizontal(spacing: 0) // No spacing as the content already contains it.
+            case let locationTimelineItem as LocationRoomTimelineItem:
+                .overlay(capsuleStyle: locationTimelineItem.content.geoURI != nil)
+            default:
+                .horizontal()
+            }
+        case is StickerRoomTimelineItem:
             .overlay(capsuleStyle: true)
-        case let locationTimelineItem as LocationRoomTimelineItem:
-            .overlay(capsuleStyle: locationTimelineItem.content.geoURI != nil)
         case is PollRoomTimelineItem:
             .vertical(spacing: 16)
         default:
@@ -180,22 +188,22 @@ private extension EncryptionAuthenticity {
 struct TimelineItemSendInfoLabel_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         VStack(spacing: 16) {
-            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .random,
+            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .randomEvent,
                                                       localizedString: "09:47 AM",
                                                       layoutType: .horizontal()))
-            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .random,
+            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .randomEvent,
                                                       localizedString: "09:47 AM",
                                                       status: .sendingFailed,
                                                       layoutType: .horizontal()))
-            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .random,
+            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .randomEvent,
                                                       localizedString: "09:47 AM",
                                                       status: .encryptionAuthenticity(.unsignedDevice(color: .red)),
                                                       layoutType: .horizontal()))
-            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .random,
+            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .randomEvent,
                                                       localizedString: "09:47 AM",
                                                       status: .encryptionAuthenticity(.notGuaranteed(color: .gray)),
                                                       layoutType: .horizontal()))
-            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .random,
+            TimelineItemSendInfoLabel(sendInfo: .init(itemID: .randomEvent,
                                                       localizedString: "09:47 AM",
                                                       status: .encryptionAuthenticity(.sentInClear(color: .red)),
                                                       layoutType: .horizontal()))

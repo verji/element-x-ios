@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -15,10 +15,13 @@ import WysiwygComposer
 typealias ComposerToolbarViewModelType = StateStoreViewModel<ComposerToolbarViewState, ComposerToolbarViewAction>
 
 final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerToolbarViewModelProtocol {
+    private var initialText: String?
     private let wysiwygViewModel: WysiwygComposerViewModel
     private let completionSuggestionService: CompletionSuggestionServiceProtocol
+    private let roomProxy: JoinedRoomProxyProtocol
     private let analyticsService: AnalyticsService
     private let draftService: ComposerDraftServiceProtocol
+    private var identityPinningViolations = [String: RoomMemberProxyProtocol]()
     
     private let mentionBuilder: MentionBuilderProtocol
     private let attributedStringBuilder: AttributedStringBuilderProtocol
@@ -41,21 +44,27 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
     
     private var replyLoadingTask: Task<Void, Never>?
 
-    init(wysiwygViewModel: WysiwygComposerViewModel,
+    init(initialText: String? = nil,
+         roomProxy: JoinedRoomProxyProtocol,
+         wysiwygViewModel: WysiwygComposerViewModel,
          completionSuggestionService: CompletionSuggestionServiceProtocol,
          mediaProvider: MediaProviderProtocol,
          mentionDisplayHelper: MentionDisplayHelper,
          analyticsService: AnalyticsService,
          composerDraftService: ComposerDraftServiceProtocol) {
+        self.initialText = initialText
         self.wysiwygViewModel = wysiwygViewModel
         self.completionSuggestionService = completionSuggestionService
         self.analyticsService = analyticsService
+        self.roomProxy = roomProxy
         draftService = composerDraftService
         
         mentionBuilder = MentionBuilder()
         attributedStringBuilder = AttributedStringBuilder(cacheKey: "Composer", mentionBuilder: mentionBuilder)
         
-        super.init(initialViewState: ComposerToolbarViewState(audioPlayerState: .init(id: .recorderPreview, duration: 0),
+        super.init(initialViewState: ComposerToolbarViewState(audioPlayerState: .init(id: .recorderPreview,
+                                                                                      title: L10n.commonVoiceMessage,
+                                                                                      duration: 0),
                                                               audioRecorderState: .init(),
                                                               bindings: .init()),
                    mediaProvider: mediaProvider)
@@ -115,6 +124,19 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
         
         setupMentionsHandling(mentionDisplayHelper: mentionDisplayHelper)
         focusComposerIfHardwareKeyboardConnected()
+        
+        let identityStatusChangesPublisher = roomProxy.identityStatusChangesPublisher.receive(on: DispatchQueue.main)
+
+        Task { [weak self] in
+            for await changes in identityStatusChangesPublisher.values {
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                await self?.processIdentityStatusChanges(changes)
+            }
+        }
+        .store(in: &cancellables)
     }
     
     // MARK: - Public
@@ -175,7 +197,9 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
         case .voiceMessage(let voiceMessageAction):
             processVoiceMessageAction(voiceMessageAction)
         case .plainComposerTextChanged:
-            completionSuggestionService.processTextMessage(state.bindings.plainComposerText.string)
+            completionSuggestionService.processTextMessage(state.bindings.plainComposerText.string, selectedRange: context.viewState.bindings.selectedRange)
+        case .selectedTextChanged:
+            completionSuggestionService.processTextMessage(state.bindings.plainComposerText.string, selectedRange: context.viewState.bindings.selectedRange)
         case .didToggleFormattingOptions:
             if context.composerFormattingEnabled {
                 guard !context.plainComposerText.string.isEmpty else {
@@ -204,6 +228,8 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
             } else {
                 set(text: plainText)
             }
+        case .setFocus:
+            state.bindings.composerFocused = true
         case .removeFocus:
             state.bindings.composerFocused = false
         case .clear:
@@ -217,8 +243,12 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
         }
     }
     
-    func loadDraft() {
-        Task {
+    func loadDraft() async {
+        if let initialText {
+            set(text: initialText)
+            set(mode: .default)
+            state.bindings.composerFocused = true
+        } else {
             guard case let .success(draft) = await draftService.loadDraft(),
                   let draft else {
                 return
@@ -256,9 +286,9 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
         case .newMessage:
             set(mode: .default)
         case .edit(let eventID):
-            set(mode: .edit(originalItemId: .init(timelineID: "", eventID: eventID)))
+            set(mode: .edit(originalEventOrTransactionID: .eventID(eventID), type: .default))
         case .reply(let eventID):
-            set(mode: .reply(itemID: .init(timelineID: "", eventID: eventID), replyDetails: .loading(eventID: eventID), isThread: false))
+            set(mode: .reply(eventID: eventID, replyDetails: .loading(eventID: eventID), isThread: false))
             replyLoadingTask = Task {
                 let reply = switch await draftService.getReply(eventID: eventID) {
                 case .success(let reply):
@@ -271,7 +301,7 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
                     return
                 }
                 
-                set(mode: .reply(itemID: .init(timelineID: "", eventID: eventID), replyDetails: reply.details, isThread: reply.isThreaded))
+                set(mode: .reply(eventID: eventID, replyDetails: reply.details, isThread: reply.isThreaded))
             }
         }
     }
@@ -312,17 +342,9 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
         switch state.composerMode {
         case .default:
             type = .newMessage
-        case .edit(let itemID):
-            guard let eventID = itemID.eventID else {
-                MXLog.error("The event id for this message is missing")
-                return
-            }
-            type = .edit(eventID: eventID)
-        case .reply(let itemID, _, _):
-            guard let eventID = itemID.eventID else {
-                MXLog.error("The event id for this message is missing")
-                return
-            }
+        case .edit(.eventID(let originalEventID), .default):
+            type = .edit(eventID: originalEventID)
+        case .reply(let eventID, _, _):
             type = .reply(eventID: eventID)
         default:
             if isVolatile {
@@ -463,16 +485,40 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
                 let attributedString = NSMutableAttributedString(attributedString: state.bindings.plainComposerText)
                 mentionBuilder.handleUserMention(for: attributedString, in: suggestion.range, url: url, userID: item.id, userDisplayName: item.displayName)
                 state.bindings.plainComposerText = attributedString
+                let newSelectedRange = NSRange(location: state.bindings.selectedRange.location - item.rawSuggestionText.count, length: 0)
+                state.bindings.selectedRange = newSelectedRange
             }
-        case .allUsers:
+        case let .allUsers(item):
             if context.composerFormattingEnabled {
                 wysiwygViewModel.setAtRoomMention()
             } else {
                 let attributedString = NSMutableAttributedString(attributedString: state.bindings.plainComposerText)
                 mentionBuilder.handleAllUsersMention(for: attributedString, in: suggestion.range)
                 state.bindings.plainComposerText = attributedString
+                
+                let newSelectedRange = NSRange(location: state.bindings.selectedRange.location - item.rawSuggestionText.count, length: 0)
+                state.bindings.selectedRange = newSelectedRange
             }
         }
+    }
+    
+    private func processIdentityStatusChanges(_ changes: [IdentityStatusChange]) async {
+        for change in changes {
+            switch change.changedTo {
+            case .verificationViolation:
+                guard case let .success(member) = await roomProxy.getMember(userID: change.userId) else {
+                    MXLog.error("Failed retrieving room member for identity status change: \(change)")
+                    continue
+                }
+
+                identityPinningViolations[change.userId] = member
+            default:
+                // clear
+                identityPinningViolations[change.userId] = nil
+            }
+        }
+
+        state.canSend = identityPinningViolations.isEmpty
     }
 
     private func set(mode: ComposerMode) {
@@ -583,14 +629,14 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
     private func makeCreateWithTextAlertInfo(urlBinding: Binding<String>, textBinding: Binding<String>) -> AlertInfo<UUID> {
         AlertInfo(id: UUID(),
                   title: L10n.richTextEditorCreateLink,
-                  primaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionCancel, action: {
+                  primaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionCancel) {
                       self.restoreComposerSelectedRange()
-                  }),
-                  secondaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionSave, action: {
+                  },
+                  secondaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionSave) {
                       self.restoreComposerSelectedRange()
                       self.createLinkWithText()
 
-                  }),
+                  },
                   textFields: [AlertInfo<UUID>.AlertTextField(placeholder: L10n.commonText,
                                                               text: textBinding,
                                                               autoCapitalization: .never,
@@ -604,14 +650,14 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
     private func makeSetUrlAlertInfo(urlBinding: Binding<String>, isEdit: Bool) -> AlertInfo<UUID> {
         AlertInfo(id: UUID(),
                   title: isEdit ? L10n.richTextEditorEditLink : L10n.richTextEditorCreateLink,
-                  primaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionCancel, action: {
+                  primaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionCancel) {
                       self.restoreComposerSelectedRange()
-                  }),
-                  secondaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionSave, action: {
+                  },
+                  secondaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionSave) {
                       self.restoreComposerSelectedRange()
                       self.setLink()
 
-                  }),
+                  },
                   textFields: [AlertInfo<UUID>.AlertTextField(placeholder: L10n.richTextEditorUrlPlaceholder,
                                                               text: urlBinding,
                                                               autoCapitalization: .never,
@@ -621,16 +667,16 @@ final class ComposerToolbarViewModel: ComposerToolbarViewModelType, ComposerTool
     private func makeEditChoiceAlertInfo(urlBinding: Binding<String>) -> AlertInfo<UUID> {
         AlertInfo(id: UUID(),
                   title: L10n.richTextEditorEditLink,
-                  primaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionRemove, role: .destructive, action: {
+                  primaryButton: AlertInfo<UUID>.AlertButton(title: L10n.actionRemove, role: .destructive) {
                       self.restoreComposerSelectedRange()
                       self.removeLinks()
-                  }),
-                  verticalButtons: [AlertInfo<UUID>.AlertButton(title: L10n.actionEdit, action: {
+                  },
+                  verticalButtons: [AlertInfo<UUID>.AlertButton(title: L10n.actionEdit) {
                       self.state.bindings.alertInfo = nil
                       DispatchQueue.main.async {
                           self.state.bindings.alertInfo = self.makeSetUrlAlertInfo(urlBinding: urlBinding, isEdit: true)
                       }
-                  })])
+                  }])
     }
 
     private func restoreComposerSelectedRange() {

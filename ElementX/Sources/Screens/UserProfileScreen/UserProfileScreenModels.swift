@@ -1,8 +1,8 @@
 //
 // Copyright 2022-2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Foundation
@@ -19,27 +19,34 @@ struct UserProfileScreenViewState: BindableState {
     let isPresentedModally: Bool
     
     var userProfile: UserProfileProxy?
+    var isVerified: Bool?
     var permalink: URL?
     var dmRoomID: String?
 
     var bindings: UserProfileScreenViewStateBindings
+    
+    var showVerifiedBadge: Bool {
+        isVerified == true // We purposely show the badge on your own account for consistency with Web.
+    }
 }
 
 struct UserProfileScreenViewStateBindings {
-    var alertInfo: AlertInfo<UserProfileScreenError>?
+    var alertInfo: AlertInfo<UserProfileScreenAlertType>?
+    var inviteConfirmationUser: UserProfileProxy?
     
     /// A media item that will be previewed with QuickLook.
     var mediaPreviewItem: MediaPreviewItem?
 }
 
 enum UserProfileScreenViewAction {
-    case displayAvatar
+    case displayAvatar(URL)
     case openDirectChat
+    case createDirectChat
     case startCall(roomID: String)
     case dismiss
 }
 
-enum UserProfileScreenError: Hashable {
+enum UserProfileScreenAlertType: Hashable {
     case failedOpeningDirectChat
     case unknown
 }

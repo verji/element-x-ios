@@ -1,8 +1,8 @@
 //
 // Copyright 2023, 2024 New Vector Ltd.
 //
-// SPDX-License-Identifier: AGPL-3.0-only
-// Please see LICENSE in the repository root for full details.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+// Please see LICENSE files in the repository root for full details.
 //
 
 import Combine
@@ -16,7 +16,7 @@ class VoiceMessageCacheTests: XCTestCase {
     private var mediaSource: MediaSourceProxy!
     private var fileManager: FileManager!
     
-    private let someURL = URL("/some/url")
+    private let someURL = URL.mockMXCAudio
     private let testFilename = "test-file"
     private let mpeg4aacFileExtension = "m4a"
     private let testTemporaryDirectory = URL.temporaryDirectory.appendingPathComponent("test-voice-messsage-cache")
@@ -26,7 +26,7 @@ class VoiceMessageCacheTests: XCTestCase {
         voiceMessageCache.clearCache()
         
         fileManager = FileManager.default
-        mediaSource = MediaSourceProxy(url: someURL, mimeType: "audio/ogg")
+        mediaSource = try MediaSourceProxy(url: someURL, mimeType: "audio/ogg")
         
         // Create the temporary directory we will use
         try fileManager.createDirectory(at: testTemporaryDirectory, withIntermediateDirectories: true)
